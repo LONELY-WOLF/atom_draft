@@ -16,9 +16,9 @@ int parsePacket();
 uint8_t extract_u8(uint8_t* data, uint32_t bit_off, uint8_t bit_len);
 uint16_t extract_u16(uint8_t* data, uint8_t bit_off, uint8_t bit_len);
 
-uint8_t buffer[256];
-uint8_t buffer_p = 0;
-uint8_t buffer_len = 0;
+uint8_t buffer[2048];
+uint16_t buffer_p = 0;
+uint16_t buffer_len = 0;
 
 uint8_t bitmask[8] = { 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF };
 
@@ -55,22 +55,25 @@ int parsePacket()
 		read();
 		buffer_p = (buffer_p + 1) & 0xFF;
 	}
-	printf("ID = %d\n", extract_u16(&buffer[buffer_p], 24, 12));
-	if (extract_u16(&buffer[buffer_p], 24, 12) == 4095) //Ashtech message
+	uint16_t id = extract_u16(&buffer[buffer_p], 24, 12);
+	//printf("ID = %d\n", extract_u16(&buffer[buffer_p], 24, 12));
+	if (id == 4095) //Ashtech message
 	{
 		printf("Ashtech\n");
 		mes_hdr.length = extract_u16(&buffer[buffer_p], 14, 10);
 		printf("length: %d\n", mes_hdr.length);
 		CHECK_DATA(mes_hdr.length + 6);
-		mes_hdr.crc24 = buffer[(buffer_p + mes_hdr.length + 3) && 0xFF];
+		mes_hdr.crc24 = buffer[(buffer_p + mes_hdr.length + 4) & 0x2FF];
 		mes_hdr.crc24 <<= 8;
-		mes_hdr.crc24 = buffer[(buffer_p + mes_hdr.length + 4) && 0xFF];
+		mes_hdr.crc24 += buffer[(buffer_p + mes_hdr.length + 5) & 0x2FF];
 		mes_hdr.crc24 <<= 8;
-		mes_hdr.crc24 = buffer[(buffer_p + mes_hdr.length + 5) && 0xFF];
+		mes_hdr.crc24 += buffer[(buffer_p + mes_hdr.length + 6) & 0x2FF];
 		printf("CRC = %X\n", mes_hdr.crc24);
-		if (mes_hdr.crc24 != crc24_calc(INIT_CRC24, &buffer[(buffer_p + 3) && 0xFF], mes_hdr.length))
+		if (mes_hdr.crc24 != crc24_calc(INIT_CRC24, buffer, buffer_p + 3, mes_hdr.length))
 		{
 			printf("CRC failed\n");
+			buffer_p = (buffer_p + 1) & 0xFF;
+			buffer_len--;
 		}
 		else
 		{
@@ -112,12 +115,18 @@ inline uint8_t extract_u8(uint8_t* data, uint32_t bit_off, uint8_t bit_len)
 inline uint16_t extract_u16(uint8_t* data, uint8_t bit_off, uint8_t bit_len)
 {
 	uint32_t offset = bit_off % 8;
-	uint32_t retval = *((uint32_t*)(&data[bit_off / 8]));
+	uint32_t retval = data[bit_off >> 3] << 24;
+	retval += data[(bit_off >> 3) + 1] << 16;
+	retval += data[(bit_off >> 3) + 2] << 8;
+	retval += data[(bit_off >> 3) + 3];
 	retval = retval >> (32 - bit_len - offset);
-	return (uint16_t)(retval & (((uint16_t)bitmask[bit_len - 9] << 8) | 0xFF));
+	uint16_t mask = (uint16_t)bitmask[bit_len - 9];
+	mask <<= 8;
+	mask |= 0xFF;
+	return (uint16_t)(retval & mask);
 }
 
-void read()
+inline void read()
 {
 	buffer_len++;
 	int ch = 0;

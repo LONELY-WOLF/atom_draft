@@ -57,9 +57,11 @@ static const uint32_t tbl_crc24[256] = {
 	0x00dafe19, 0x000c596f, 0x002cbb4e, 0x00fa1c38, 0x006d7f0c, 0x00bbd87a, 0x009b3a5b, 0x004d9d2d
 };
 
-uint32_t crc24_calc(uint32_t fcs, uint8_t *cp, unsigned int len)
+uint32_t crc24_calc(uint32_t fcs, uint8_t *cp, unsigned int off, unsigned int len)
 {
-	while (len--)
-		fcs = (fcs >> 8) ^ tbl_crc24[(fcs ^ *cp++) & 0xff];
+	for (unsigned int i = 0; i < len; i++)
+	{
+		fcs = (fcs >> 8) ^ tbl_crc24[(fcs ^ (cp[(off + i) & 0x2FF])) & 0xff];
+	}
 	return fcs;
 }
