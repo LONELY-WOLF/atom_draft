@@ -1,0 +1,9 @@
+*.vcxproj
+*.user
+Debug/*
+*.filters
+input.bin
+ReadMe.txt
+stdafx.h
+targetver.h
+stdafx.cpp
