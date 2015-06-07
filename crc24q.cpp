@@ -12,14 +12,6 @@
 
 #include "crc24q.h"
 
-/** \defgroup edc Error Detection and Correction
-* Error detection and correction functions.
-* \{ */
-
-/** \defgroup crc CRC
-* Cyclic redundancy checks.
-* \{ */
-
 static const uint32_t crc24qtab[256] = {
 	0x000000, 0x864CFB, 0x8AD50D, 0x0C99F6, 0x93E6E1, 0x15AA1A, 0x1933EC, 0x9F7F17,
 	0xA18139, 0x27CDC2, 0x2B5434, 0xAD18CF, 0x3267D8, 0xB42B23, 0xB8B2D5, 0x3EFE2E,
@@ -55,28 +47,9 @@ static const uint32_t crc24qtab[256] = {
 	0x42FA2F, 0xC4B6D4, 0xC82F22, 0x4E63D9, 0xD11CCE, 0x575035, 0x5BC9C3, 0xDD8538
 };
 
-/** Calculate Qualcomm 24-bit Cyclical Redundancy Check (CRC-24Q).
-*
-* The CRC polynomial used is:
-* \f[
-*   x^{24} + x^{23} + x^{18} + x^{17} + x^{14} + x^{11} + x^{10} +
-*   x^7    + x^6    + x^5    + x^4    + x^3    + x+1
-* \f]
-* Mask 0x1864CFB, not reversed, not XOR'd
-*
-* \param buf Array of data to calculate CRC for
-* \param len Length of data array
-* \param crc Initial CRC value
-*
-* \return CRC-24Q value
-*/
 uint32_t crc24q(uint32_t crc, uint8_t* buf, uint32_t start, uint32_t len)
 {
 	for (uint32_t i = 0; i < len; i++)
 		crc = ((crc << 8) & 0xFFFFFF) ^ crc24qtab[(crc >> 16) ^ buf[(start + i) & 0x3FF]];
 	return crc;
 }
-
-/** \} */
-
-/** \} */
