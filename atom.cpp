@@ -11,8 +11,8 @@
 //Prototypes
 void read();
 int parsePacket();
-uint8_t extract_u8(uint8_t* data, uint32_t bit_off, uint8_t bit_len);
-uint16_t extract_u16(uint8_t* data, uint8_t bit_off, uint8_t bit_len);
+uint8_t extract_u8(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
+uint16_t extract_u16(uint16_t buf_off, uint8_t bit_off, uint8_t bit_len);
 
 uint8_t buffer[2048];
 uint16_t buffer_p = 0;
@@ -53,12 +53,12 @@ int parsePacket()
 		read();
 		buffer_p = (buffer_p + 1) & 0x3FF;
 	}
-	uint16_t id = extract_u16(&buffer[buffer_p], 24, 12);
+	uint16_t id = extract_u16(buffer_p, 24, 12);
 	//printf("ID = %d\n", extract_u16(&buffer[buffer_p], 24, 12));
 	if (id == 4095) //Ashtech message
 	{
 		printf("Ashtech\n");
-		mes_hdr.length = extract_u16(&buffer[buffer_p], 14, 10);
+		mes_hdr.length = extract_u16(buffer_p, 14, 10);
 		printf("length: %d\n", mes_hdr.length);
 		CHECK_DATA(mes_hdr.length + 6);
 		mes_hdr.crc24 = buffer[(buffer_p + mes_hdr.length + 3) & 0x3FF];
@@ -74,18 +74,39 @@ int parsePacket()
 			buffer_len--;
 			return -1;
 		}
-		uint8_t message_sub_num = extract_u8(&buffer[buffer_p], 36, 4);
+		uint8_t message_sub_num = extract_u8(buffer_p, 36, 4);
 		switch (message_sub_num)
 		{
 			case 3: //PVT
 			{
-				mes_hdr.version = extract_u8(&buffer[buffer_p], 40, 3);
-				mes_hdr.multi_mes = extract_u8(&buffer[buffer_p], 43, 1);
-				mes_hdr.nsats_used = extract_u8(&buffer[buffer_p], 63, 6);
-				mes_hdr.nsats_seen = extract_u8(&buffer[buffer_p], 69, 6);
-				mes_hdr.nsats_tracked = extract_u8(&buffer[buffer_p], 75, 6);
-				mes_hdr.pri_GNSS = extract_u8(&buffer[buffer_p], 81, 2);
+				mes_hdr.version = extract_u8(buffer_p, 40, 3);
+				mes_hdr.multi_mes = extract_u8(buffer_p, 43, 1);
+				mes_hdr.nsats_used = extract_u8(buffer_p, 63, 6);
+				mes_hdr.nsats_seen = extract_u8(buffer_p, 69, 6);
+				mes_hdr.nsats_tracked = extract_u8(buffer_p, 75, 6);
+				mes_hdr.pri_GNSS = extract_u8(buffer_p, 81, 2);
 				printf("PVT: %d %d %d %d %d %d\n", mes_hdr.version, mes_hdr.multi_mes, mes_hdr.nsats_used, mes_hdr.nsats_seen, mes_hdr.nsats_tracked, mes_hdr.pri_GNSS);
+				uint16_t block_p = buffer_p + 13;
+				while (block_p < buffer_p + 13 + mes_hdr.length)
+				{
+					uint8_t block_len = extract_u8(block_p, 0, 8);
+					uint8_t block_ID = extract_u8(block_p, 8, 4);
+					switch (block_ID)
+					{
+						case 1:
+						{
+							//COO - Position
+							printf("COO block in PVT\n");
+							break;
+						}
+						default:
+						{
+							printf("Not supported PVT block. ID = %d\n", block_ID);
+							break;
+						}
+					}
+					block_p += block_len;
+				}
 				break;
 			}
 		}
@@ -101,28 +122,72 @@ int parsePacket()
 	return 0;
 }
 
-inline uint8_t extract_u8(uint8_t* data, uint32_t bit_off, uint8_t bit_len)
+inline uint8_t extract_u8(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 {
 	uint32_t offset = bit_off % 8;
-	uint16_t retval = data[bit_off >> 3] << 8;
-	retval += data[(bit_off >> 3) + 1];
+	uint16_t retval = buffer[(buf_off + (bit_off >> 3)) & 0x3FF] << 8;
+	retval += buffer[(buf_off + (bit_off >> 3) + 1) & 0x3FF];
 	retval >>= (16 - bit_len - offset);
 	retval &= bitmask[bit_len - 1];
 	return (uint8_t)retval;
 }
 
-inline uint16_t extract_u16(uint8_t* data, uint8_t bit_off, uint8_t bit_len)
+inline uint16_t extract_u16(uint16_t buf_off, uint8_t bit_off, uint8_t bit_len)
 {
 	uint32_t offset = bit_off % 8;
-	uint32_t retval = data[bit_off >> 3] << 24;
-	retval += data[(bit_off >> 3) + 1] << 16;
-	retval += data[(bit_off >> 3) + 2] << 8;
-	retval += data[(bit_off >> 3) + 3];
+	uint32_t retval = buffer[(buf_off + (bit_off >> 3)) & 0x3FF] << 24;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 1)) & 0x3FF] << 16;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 2)) & 0x3FF] << 8;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 3)) & 0x3FF];
 	retval = retval >> (32 - bit_len - offset);
 	uint16_t mask = (uint16_t)bitmask[bit_len - 9];
 	mask <<= 8;
 	mask |= 0xFF;
 	return (uint16_t)(retval & mask);
+}
+
+inline uint32_t extract_u32(uint16_t buf_off, uint8_t bit_off, uint8_t bit_len)
+{
+	uint32_t offset = bit_off % 8;
+	//May be there is no need to read 8 bytes?
+	uint64_t retval = buffer[(buf_off + (bit_off >> 3)) & 0x3FF] << 56;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 1)) & 0x3FF] << 48;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 2)) & 0x3FF] << 40;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 1)) & 0x3FF] << 32;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 2)) & 0x3FF] << 24;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 1)) & 0x3FF] << 16;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 2)) & 0x3FF] << 8;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 3)) & 0x3FF];
+	retval = retval >> (64 - bit_len - offset);
+	uint32_t mask = 1;
+	for (uint8_t i = 1; i < bit_len; i++)
+	{
+		mask <<= 1;
+		mask++;
+	}
+	return (uint32_t)(retval & mask);
+}
+
+//MADNESS!!!
+inline uint64_t extract_u64(uint16_t buf_off, uint8_t bit_off, uint8_t bit_len)
+{
+	uint32_t offset = bit_off % 8;
+	uint64_t retval = buffer[(buf_off + (bit_off >> 3)) & 0x3FF] << 56;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 1)) & 0x3FF] << 48;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 2)) & 0x3FF] << 40;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 1)) & 0x3FF] << 32;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 2)) & 0x3FF] << 24;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 1)) & 0x3FF] << 16;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 2)) & 0x3FF] << 8;
+	retval += buffer[(buf_off + ((bit_off >> 3) + 3)) & 0x3FF];
+	retval = retval >> (64 - bit_len - offset);
+	uint64_t mask = 1;
+	for (uint8_t i = 1; i < bit_len; i++)
+	{
+		mask <<= 1;
+		mask++;
+	}
+	return retval & mask;
 }
 
 inline void read()
