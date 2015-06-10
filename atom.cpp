@@ -190,6 +190,105 @@ inline uint64_t extract_u56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 	return retval & mask;
 }
 
+inline int8_t extract_i8(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
+{
+	uint32_t offset = bit_off % 8;
+	uint16_t retval = buffer[(buf_off + (bit_off >> 3)) & 0x3FF];
+	retval <<= 8;
+	retval += buffer[(buf_off + (bit_off >> 3) + 1) & 0x3FF];
+	retval >>= (16 - bit_len - offset);
+	if ((retval >> (bit_len - 1)) & 1) //Negative
+	{
+		retval |= ~bitmask[bit_len - 1];
+	}
+	else
+	{
+		retval &= bitmask[bit_len - 1];
+	}
+	return *(int8_t*)&retval; //LE only!
+}
+
+inline int16_t extract_i16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
+{
+	uint32_t offset = bit_off % 8;
+	uint32_t retval = 0;
+	for (int i = 0; i < 3; i++)
+	{
+		retval <<= 8;
+		retval += buffer[(buf_off + (bit_off >> 3) + i) & 0x3FF];
+	}
+	retval = retval >> (24 - bit_len - offset);
+	uint16_t mask = (uint16_t)bitmask[bit_len - 9];
+	mask <<= 8;
+	mask |= 0xFF;
+	if ((retval >> (bit_len - 1)) & 1) //Negative
+	{
+		retval |= ~mask;
+	}
+	else
+	{
+		retval &= mask;
+	}
+	return *(int16_t*)&retval;; //LE only!
+}
+
+inline int32_t extract_i32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
+{
+	uint32_t offset = bit_off % 8;
+	uint64_t retval = 0;
+	for (int i = 0; i < 5; i++)
+	{
+		retval <<= 8;
+		retval += buffer[(buf_off + (bit_off >> 3) + i) & 0x3FF];
+	}
+	retval = retval >> (40 - bit_len - offset);
+	uint32_t mask = 1;
+	for (uint8_t i = 1; i < bit_len; i++)
+	{
+		mask <<= 1;
+		mask++;
+	}
+	if ((retval >> (bit_len - 1)) & 1) //Negative
+	{
+		retval |= ~mask;
+	}
+	else
+	{
+		retval &= mask;
+	}
+	return *(int32_t*)&retval;; //LE only!
+}
+
+//MADNESS #2!!!
+
+inline int64_t extract_i56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
+{
+	uint32_t offset = bit_off % 8;
+	uint64_t retval = 0;
+	for (int i = 0; i < 8; i++)
+	{
+		retval <<= 8;
+		retval += buffer[(buf_off + (bit_off >> 3) + i) & 0x3FF];
+	}
+	retval = retval >> (64 - bit_len - offset);
+	uint64_t mask = 1;
+	for (uint8_t i = 1; i < bit_len; i++)
+	{
+		mask <<= 1;
+		mask++;
+	}
+	
+	if ((retval >> (bit_len - 1)) & 1) //Negative
+	{
+		retval |= ~mask;
+	}
+	else
+	{
+		retval &= mask;
+	}
+	return *(int64_t*)&retval;; //LE only!
+}
+
 inline void read()
 {
 	int ch = 0;
