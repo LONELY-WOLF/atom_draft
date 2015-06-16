@@ -106,7 +106,14 @@ int parsePacket()
 							break;
 						}
 					}
-					block_p += block_len;
+					if (block_len > 0)
+					{
+						block_p += block_len;
+					}
+					else
+					{
+						block_p++; //In case of garbage
+					}
 				}
 				break;
 			}
