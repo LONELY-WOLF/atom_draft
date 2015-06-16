@@ -15,6 +15,10 @@ uint8_t extract_u8(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
 uint16_t extract_u16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
 uint32_t extract_u32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
 uint64_t extract_u56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
+int8_t extract_i8(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
+int16_t extract_i16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
+int32_t extract_i32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
+int64_t extract_i56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
 
 uint8_t buffer[2048];
 uint16_t buffer_p = 0;
@@ -97,12 +101,48 @@ int parsePacket()
 						case 1:
 						{
 							//COO - Position
-							printf("COO block in PVT\n");
+							if (block_len != 26)
+							{
+								printf("Wrong size of COO block\n");
+								break;
+							}
+							struct coo_pvt_data coo_data;
+							coo_data.pos_type = extract_u8(block_p, 12, 4);
+							coo_data.GNSS_usage = extract_u8(block_p, 16, 8);
+							coo_data.pos_mode = extract_u8(block_p, 24, 3);
+							coo_data.pos_smoothing = extract_u8(block_p, 27, 3);
+							coo_data.PDOP = extract_u16(block_p, 34, 10);
+							coo_data.HDOP = extract_u16(block_p, 44, 10);
+							coo_data.x = extract_i56(block_p, 54, 38);
+							coo_data.y = extract_i56(block_p, 92, 38);
+							coo_data.z = extract_i56(block_p, 130, 38);
+							coo_data.diff_pos_age = extract_u16(block_p, 168, 10);
+							coo_data.base_id = extract_u16(block_p, 178, 12);
+							coo_data.pos_type_clarifier = extract_u8(block_p, 190, 4);
+							coo_data.diff_link_age = extract_u16(block_p, 194, 10);
+							printf("COO: %d %d %d %d\n", coo_data.pos_type, coo_data.x, coo_data.y, coo_data.z);
 							break;
+						}
+						case 3:
+						{
+							//VEL - velosity
+							if (block_len != 12)
+							{
+								printf("Wrong size of VEL block\n");
+								break;
+							}
+							struct vel_pvt_data vel_data;
+							vel_data.v1 = extract_i32(block_p, 12, 25);
+							vel_data.v2 = extract_i32(block_p, 37, 25);
+							vel_data.v3 = extract_i32(block_p, 62, 25);
+							vel_data.vel_type = extract_u8(block_p, 87, 1);
+							vel_data.vel_smoothing_int = extract_u8(block_p, 88, 4);
+							vel_data.vel_frame = extract_u8(block_p, 92, 1);
+							printf("VEL: %d %d %d %d\n", vel_data.v1, vel_data.v2, vel_data.v3, vel_data.vel_frame);
 						}
 						default:
 						{
-							printf("Not supported PVT block. ID = %d\n", block_ID);
+							printf("Unknown PVT block. ID = %d\n", block_ID);
 							break;
 						}
 					}
