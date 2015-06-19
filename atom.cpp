@@ -8,18 +8,6 @@
 #include "atom.h"
 #include "crc24q.h"
 
-//Prototypes
-void read();
-int parsePacket();
-uint8_t extract_u8(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-uint16_t extract_u16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-uint32_t extract_u32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-uint64_t extract_u56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-int8_t extract_i8(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-int16_t extract_i16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-int32_t extract_i32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-int64_t extract_i56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-
 uint8_t buffer[2048];
 uint16_t buffer_p = 0;
 uint16_t buffer_len = 0;
@@ -59,18 +47,18 @@ int parsePacket()
 		read();
 		buffer_p = (buffer_p + 1) & 0x3FF;
 	}
-	uint16_t id = extract_u16(buffer_p, 24, 12);
+	uint16_t id = extract_u16(0, 24, 12);
 	//printf("ID = %d\n", extract_u16(&buffer[buffer_p], 24, 12));
 	if (id == 4095) //Ashtech message
 	{
-		mes_hdr.length = extract_u16(buffer_p, 14, 10);
+		mes_hdr.length = extract_u16(0, 14, 10);
 		printf("length: %d\n", mes_hdr.length);
 		CHECK_DATA(mes_hdr.length + 6);
-		mes_hdr.crc24 = buffer[(buffer_p + mes_hdr.length + 3) & 0x3FF];
+		mes_hdr.crc24 = getByte(mes_hdr.length + 3);
 		mes_hdr.crc24 <<= 8;
-		mes_hdr.crc24 += buffer[(buffer_p + mes_hdr.length + 4) & 0x3FF];
+		mes_hdr.crc24 += getByte(mes_hdr.length + 4);
 		mes_hdr.crc24 <<= 8;
-		mes_hdr.crc24 += buffer[(buffer_p + mes_hdr.length + 5) & 0x3FF];
+		mes_hdr.crc24 += getByte(mes_hdr.length + 5);
 		//printf("CRC = %X\n", mes_hdr.crc24);
 		if (mes_hdr.crc24 != crc24q(0, buffer, buffer_p, mes_hdr.length + 3))
 		{
@@ -79,20 +67,20 @@ int parsePacket()
 			buffer_len--;
 			return -1;
 		}
-		uint8_t message_sub_num = extract_u8(buffer_p, 36, 4);
+		uint8_t message_sub_num = extract_u8(0, 36, 4);
 		switch (message_sub_num)
 		{
 			case 3: //PVT
 			{
-				mes_hdr.version = extract_u8(buffer_p, 40, 3);
-				mes_hdr.multi_mes = extract_u8(buffer_p, 43, 1);
-				mes_hdr.nsats_used = extract_u8(buffer_p, 63, 6);
-				mes_hdr.nsats_seen = extract_u8(buffer_p, 69, 6);
-				mes_hdr.nsats_tracked = extract_u8(buffer_p, 75, 6);
-				mes_hdr.pri_GNSS = extract_u8(buffer_p, 81, 2);
+				mes_hdr.version = extract_u8(0, 40, 3);
+				mes_hdr.multi_mes = extract_u8(0, 43, 1);
+				mes_hdr.nsats_used = extract_u8(0, 63, 6);
+				mes_hdr.nsats_seen = extract_u8(0, 69, 6);
+				mes_hdr.nsats_tracked = extract_u8(0, 75, 6);
+				mes_hdr.pri_GNSS = extract_u8(0, 81, 2);
 				printf("PVT: %d %d %d %d %d %d\n", mes_hdr.version, mes_hdr.multi_mes, mes_hdr.nsats_used, mes_hdr.nsats_seen, mes_hdr.nsats_tracked, mes_hdr.pri_GNSS);
-				uint16_t block_p = buffer_p + 13;
-				while (block_p < buffer_p + 13 + mes_hdr.length)
+				uint16_t block_p = 13;
+				while (block_p < 13 + mes_hdr.length)
 				{
 					uint8_t block_len = extract_u8(block_p, 0, 8);
 					uint8_t block_ID = extract_u8(block_p, 8, 4);
@@ -173,22 +161,22 @@ int parsePacket()
 inline uint8_t extract_u8(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 {
 	uint32_t offset = bit_off % 8;
-	uint16_t retval = buffer[(buf_off + (bit_off >> 3)) & 0x3FF];
+	uint16_t retval = getByte(buf_off + (bit_off >> 3));
 	retval <<= 8;
-	retval += buffer[(buf_off + (bit_off >> 3) + 1) & 0x3FF];
+	retval += getByte(buf_off + (bit_off >> 3) + 1);
 	retval >>= (16 - bit_len - offset);
 	retval &= bitmask[bit_len - 1];
 	return (uint8_t)retval;
 }
 
-inline uint16_t extract_u16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
+uint16_t extract_u16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 {
 	uint32_t offset = bit_off % 8;
 	uint32_t retval = 0;
 	for (int i = 0; i < 3; i++)
 	{
 		retval <<= 8;
-		retval += buffer[(buf_off + (bit_off >> 3) + i) & 0x3FF];
+		retval += getByte(buf_off + (bit_off >> 3) + i);
 	}
 	retval = retval >> (24 - bit_len - offset);
 	uint16_t mask = (uint16_t)bitmask[bit_len - 9];
@@ -197,14 +185,14 @@ inline uint16_t extract_u16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 	return ((uint16_t)retval) & mask;
 }
 
-inline uint32_t extract_u32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
+uint32_t extract_u32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 {
 	uint32_t offset = bit_off % 8;
 	uint64_t retval = 0;
 	for (int i = 0; i < 5; i++)
 	{
 		retval <<= 8;
-		retval += buffer[(buf_off + (bit_off >> 3) + i) & 0x3FF];
+		retval += getByte(buf_off + (bit_off >> 3) + i);
 	}
 	retval = retval >> (40 - bit_len - offset);
 	uint32_t mask = 1;
@@ -218,14 +206,14 @@ inline uint32_t extract_u32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 
 //MADNESS!!!
 
-inline uint64_t extract_u56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
+uint64_t extract_u56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 {
 	uint32_t offset = bit_off % 8;
 	uint64_t retval = 0;
 	for (int i = 0; i < 8; i++)
 	{
 		retval <<= 8;
-		retval += buffer[(buf_off + (bit_off >> 3) + i) & 0x3FF];
+		retval += getByte(buf_off + (bit_off >> 3) + i);
 	}
 	retval = retval >> (64 - bit_len - offset);
 	uint64_t mask = 1;
@@ -240,9 +228,9 @@ inline uint64_t extract_u56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 inline int8_t extract_i8(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 {
 	uint32_t offset = bit_off % 8;
-	uint16_t retval = buffer[(buf_off + (bit_off >> 3)) & 0x3FF];
+	uint16_t retval = getByte(buf_off + (bit_off >> 3));
 	retval <<= 8;
-	retval += buffer[(buf_off + (bit_off >> 3) + 1) & 0x3FF];
+	retval += getByte(buf_off + (bit_off >> 3) + 1);
 	retval >>= (16 - bit_len - offset);
 	if ((retval >> (bit_len - 1)) & 1) //Negative
 	{
@@ -255,14 +243,14 @@ inline int8_t extract_i8(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 	return *(int8_t*)&retval; //LE only!
 }
 
-inline int16_t extract_i16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
+int16_t extract_i16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 {
 	uint32_t offset = bit_off % 8;
 	uint32_t retval = 0;
 	for (int i = 0; i < 3; i++)
 	{
 		retval <<= 8;
-		retval += buffer[(buf_off + (bit_off >> 3) + i) & 0x3FF];
+		retval += getByte(buf_off + (bit_off >> 3) + i);
 	}
 	retval = retval >> (24 - bit_len - offset);
 	uint16_t mask = (uint16_t)bitmask[bit_len - 9];
@@ -279,14 +267,14 @@ inline int16_t extract_i16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 	return *(int16_t*)&retval;; //LE only!
 }
 
-inline int32_t extract_i32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
+int32_t extract_i32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 {
 	uint32_t offset = bit_off % 8;
 	uint64_t retval = 0;
 	for (int i = 0; i < 5; i++)
 	{
 		retval <<= 8;
-		retval += buffer[(buf_off + (bit_off >> 3) + i) & 0x3FF];
+		retval += getByte(buf_off + (bit_off >> 3) + i);
 	}
 	retval = retval >> (40 - bit_len - offset);
 	uint32_t mask = 1;
@@ -308,14 +296,14 @@ inline int32_t extract_i32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 
 //MADNESS #2!!!
 
-inline int64_t extract_i56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
+int64_t extract_i56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 {
 	uint32_t offset = bit_off % 8;
 	uint64_t retval = 0;
 	for (int i = 0; i < 8; i++)
 	{
 		retval <<= 8;
-		retval += buffer[(buf_off + (bit_off >> 3) + i) & 0x3FF];
+		retval += getByte(buf_off + (bit_off >> 3) + i);
 	}
 	retval = retval >> (64 - bit_len - offset);
 	uint64_t mask = 1;
@@ -349,6 +337,16 @@ inline void read()
 		getchar();
 		exit(0);
 	}
-	buffer[(buffer_p + buffer_len) & 0x3FF] = ch;
-	buffer_len++;
+	addByte(ch);
+}
+
+inline uint8_t getByte(uint16_t pos)
+{
+	return buffer[(buffer_p + pos) & 0x3FF];
+}
+
+inline void addByte(uint8_t data)
+{
+	buffer[(buffer_p + buffer_len) & 0x3FF] = data;
+	buffer_len = (buffer_len + 1) & 0x3FF;
 }
