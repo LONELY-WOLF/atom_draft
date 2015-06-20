@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 #include "atom.h"
 #include "crc24q.h"
 
@@ -108,7 +109,10 @@ int parsePacket()
 							coo_data.base_id = extract_u16(block_p, 178, 12);
 							coo_data.pos_type_clarifier = extract_u8(block_p, 190, 4);
 							coo_data.diff_link_age = extract_u16(block_p, 194, 10);
-							printf("COO: %d %d %d %d\n", coo_data.pos_type, coo_data.x, coo_data.y, coo_data.z);
+
+							int32_t lat, lon, h;
+							ecef2llh((double)coo_data.x / 10000.0, (double)coo_data.y / 10000.0, (double)coo_data.z / 10000.0, &lat, &lon, &h);
+							printf("COO: %d %d %d %d\n", coo_data.pos_type, lat, lon, h);
 							break;
 						}
 						case 3:
@@ -264,7 +268,7 @@ int16_t extract_i16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 	{
 		retval &= mask;
 	}
-	return *(int16_t*)&retval;; //LE only!
+	return *(int16_t*)&retval; //LE only!
 }
 
 int32_t extract_i32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
@@ -291,7 +295,7 @@ int32_t extract_i32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 	{
 		retval &= mask;
 	}
-	return *(int32_t*)&retval;; //LE only!
+	return *(int32_t*)&retval; //LE only!
 }
 
 //MADNESS #2!!!
@@ -312,7 +316,7 @@ int64_t extract_i56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 		mask <<= 1;
 		mask++;
 	}
-	
+
 	if ((retval >> (bit_len - 1)) & 1) //Negative
 	{
 		retval |= ~mask;
@@ -321,7 +325,7 @@ int64_t extract_i56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 	{
 		retval &= mask;
 	}
-	return *(int64_t*)&retval;; //LE only!
+	return *(int64_t*)&retval; //LE only!
 }
 
 inline void read()
@@ -349,4 +353,33 @@ inline void addByte(uint8_t data)
 {
 	buffer[(buffer_p + buffer_len) & 0x3FF] = data;
 	buffer_len = (buffer_len + 1) & 0x3FF;
+}
+
+void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t* h)
+{
+	double he;
+	double r_e = 6378137;          // WGS - 84 data
+	double r_p = 6356752;
+	double e = 0.08181979099211;
+	double l = atan2(y, x);
+	double eps = 1;
+	double tol = 1e-8; //1e-7?
+	double p = sqrt(x * x + y * y);
+	double mu = atan(z / (p * (1 - e * e)));
+
+	while (eps > tol)
+	{
+		double sinmu = sin(mu);
+		double cosmu = cos(mu);
+		double N = r_e * r_e / sqrt(r_e * r_e * cosmu * cosmu + r_p * r_p * sinmu * sinmu);
+		he = p / cosmu - N;
+		double mu0 = mu;
+		mu = atan(z / (p * (1 - e * e * N / (N + he))));
+		eps = abs(mu - mu0);
+	}
+
+	*lat = (int32_t)(mu * (180.0 / 3.141592653) * 10000000.0);
+	*lon = (int32_t)(l * (180.0 / 3.141592653) * 10000000.0);
+	*h = (int32_t)(he * 1000.0);
+	return;
 }
