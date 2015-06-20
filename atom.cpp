@@ -111,6 +111,10 @@ int parsePacket()
 							coo_data.diff_link_age = extract_u16(block_p, 194, 10);
 
 							int32_t lat, lon, h;
+							if ((coo_data.x == -137438953472) || (coo_data.y == -137438953472) || (coo_data.z == -137438953472))
+							{
+								printf("COO: invalid\n");
+							}
 							ecef2llh((double)coo_data.x / 10000.0, (double)coo_data.y / 10000.0, (double)coo_data.z / 10000.0, &lat, &lon, &h);
 							printf("COO: %d %d %d %d\n", coo_data.pos_type, lat, lon, h);
 							break;
