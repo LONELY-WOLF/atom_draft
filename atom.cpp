@@ -121,18 +121,18 @@ int parsePacket()
 						}
 						case 2:
 						{
-							//ACC - Accuracy
+							//ERR - Accuracy
 							if (block_len != 10)
 							{
-								printf("Wrong size of ACC block\n");
+								printf("Wrong size of ERR block\n");
 								break;
 							}
 							uint32_t sigma = extract_u32(block_p, 12, 20);
 							if (sigma == 1048575)
 							{
-								printf("ACC: invalid\n");
+								printf("ERR: invalid\n");
 							}
-							printf("ACC: %d\n", sigma);
+							printf("ERR: %d\n", sigma);
 							break;
 						}
 						case 3:
