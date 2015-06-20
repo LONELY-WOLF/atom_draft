@@ -119,6 +119,22 @@ int parsePacket()
 							printf("COO: %d %d %d %d\n", coo_data.pos_type, lat, lon, h);
 							break;
 						}
+						case 2:
+						{
+							//ACC - Accuracy
+							if (block_len != 10)
+							{
+								printf("Wrong size of ACC block\n");
+								break;
+							}
+							uint32_t sigma = extract_u32(block_p, 12, 20);
+							if (sigma == 1048575)
+							{
+								printf("ACC: invalid\n");
+							}
+							printf("ACC: %d\n", sigma);
+							break;
+						}
 						case 3:
 						{
 							//VEL - velosity
@@ -135,6 +151,14 @@ int parsePacket()
 							vel_data.vel_smoothing_int = extract_u8(block_p, 88, 4);
 							vel_data.vel_frame = extract_u8(block_p, 92, 1);
 							printf("VEL: %d %d %d %d\n", vel_data.v1, vel_data.v2, vel_data.v3, vel_data.vel_frame);
+							break;
+						}
+						case 14:
+						{
+							//SVS - Satellite Information
+							uint8_t gnss_id = extract_u8(block_p, 12, 3);
+							printf("SVS: size = %d, GNSS ID = %d\n", block_len, gnss_id);
+							break;
 						}
 						default:
 						{
