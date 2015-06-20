@@ -11,6 +11,7 @@
 */
 
 #include "crc24q.h"
+#include "buffer.h"
 
 static const uint32_t crc24qtab[256] = {
 	0x000000, 0x864CFB, 0x8AD50D, 0x0C99F6, 0x93E6E1, 0x15AA1A, 0x1933EC, 0x9F7F17,
@@ -47,9 +48,9 @@ static const uint32_t crc24qtab[256] = {
 	0x42FA2F, 0xC4B6D4, 0xC82F22, 0x4E63D9, 0xD11CCE, 0x575035, 0x5BC9C3, 0xDD8538
 };
 
-uint32_t crc24q(uint32_t crc, uint8_t* buf, uint32_t start, uint32_t len)
+uint32_t crc24q(uint32_t crc, uint32_t start, uint32_t len)
 {
 	for (uint32_t i = 0; i < len; i++)
-		crc = ((crc << 8) & 0xFFFFFF) ^ crc24qtab[(crc >> 16) ^ buf[(start + i) & 0x3FF]];
+		crc = ((crc << 8) & 0xFFFFFF) ^ crc24qtab[(crc >> 16) ^ getByte(start + i)];
 	return crc;
 }

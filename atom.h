@@ -4,19 +4,9 @@
 #include <stdint.h>
 
 //Prototypes
-void read();
-int parsePacket();
-uint8_t extract_u8(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-uint16_t extract_u16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-uint32_t extract_u32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-uint64_t extract_u56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-int8_t extract_i8(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-int16_t extract_i16(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-int32_t extract_i32(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-int64_t extract_i56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len);
-uint8_t getByte(uint16_t pos);
-void addByte(uint8_t data);
-void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t* h);
+extern void read();
+extern int parsePacket();
+extern void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t* h);
 
 struct pvt_header
 {

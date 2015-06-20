@@ -15,6 +15,6 @@
 
 #include <stdint.h>
 
-uint32_t crc24q(uint32_t crc, uint8_t* buf, uint32_t start, uint32_t len);
+extern uint32_t crc24q(uint32_t crc, uint32_t start, uint32_t len);
 
 #endif /* CRC24Q_H */
