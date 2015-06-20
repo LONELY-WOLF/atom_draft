@@ -48,6 +48,7 @@ static const uint32_t crc24qtab[256] = {
 	0x42FA2F, 0xC4B6D4, 0xC82F22, 0x4E63D9, 0xD11CCE, 0x575035, 0x5BC9C3, 0xDD8538
 };
 
+//TODO: remove first 2 args?
 uint32_t crc24q(uint32_t crc, uint32_t start, uint32_t len)
 {
 	for (uint32_t i = 0; i < len; i++)

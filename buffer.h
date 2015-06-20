@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+//TODO: remove those, replace with functions
 extern uint8_t buffer[2048];
 extern uint16_t buffer_p;
 extern uint16_t buffer_len;

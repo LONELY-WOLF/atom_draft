@@ -1,6 +1,3 @@
-// atom.cpp : Defines the entry point for the console application.
-//
-
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -201,6 +198,7 @@ inline void read()
 	addByte(ch);
 }
 
+//TODO: rewrite as fixed point?
 void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t* h)
 {
 	double he;
@@ -213,6 +211,7 @@ void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t*
 	double p = sqrt(x * x + y * y);
 	double mu = atan(z / (p * (1 - e * e)));
 
+	//TODO: replace with more efficient method
 	while (eps > tol)
 	{
 		double sinmu = sin(mu);

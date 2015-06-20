@@ -18,7 +18,7 @@ struct pvt_header
 	uint8_t nsats_tracked;
 	uint8_t pri_GNSS;
 	uint32_t time_tag;
-	uint32_t crc24; //24bit
+	uint32_t crc24;
 };
 
 struct coo_pvt_data
