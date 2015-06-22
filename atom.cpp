@@ -7,7 +7,7 @@
 #include "crc24q.h"
 #include "buffer.h"
 
-#define CHECK_DATA(X) while(buffer_len < X) read();
+#define CHECK_DATA(X) while(getBufLen() < X) read();
 
 FILE* input;
 
@@ -35,29 +35,28 @@ int parsePacket()
 	struct pvt_header mes_hdr;
 	memset(&mes_hdr, 0, sizeof(mes_hdr));
 	CHECK_DATA(5);
-	while (buffer[buffer_p] != 0xD3)
+	while (getByte(0) != 0xD3)
 	{
 		read();
-		buffer_p = (buffer_p + 1) & 0x3FF;
+		freeBytes(1);
 	}
 	uint16_t id = extract_u16(0, 24, 12);
 	//printf("ID = %d\n", extract_u16(&buffer[buffer_p], 24, 12));
 	if (id == 4095) //Ashtech message
 	{
-		mes_hdr.length = extract_u16(0, 14, 10);
-		printf("length: %d\n", mes_hdr.length);
-		CHECK_DATA(mes_hdr.length + 6);
-		mes_hdr.crc24 = getByte(mes_hdr.length + 3);
+		uint16_t mes_length = extract_u16(0, 14, 10);
+		printf("length: %d\n", mes_length);
+		CHECK_DATA(mes_length + 6);
+		mes_hdr.crc24 = getByte(mes_length + 3);
 		mes_hdr.crc24 <<= 8;
-		mes_hdr.crc24 += getByte(mes_hdr.length + 4);
+		mes_hdr.crc24 += getByte(mes_length + 4);
 		mes_hdr.crc24 <<= 8;
-		mes_hdr.crc24 += getByte(mes_hdr.length + 5);
+		mes_hdr.crc24 += getByte(mes_length + 5);
 		//printf("CRC = %X\n", mes_hdr.crc24);
-		if (mes_hdr.crc24 != crc24q(mes_hdr.length + 3))
+		if (mes_hdr.crc24 != crc24q(mes_length + 3))
 		{
-			printf("CRC24Q failed: %X\n", crc24q(mes_hdr.length + 3));
-			buffer_p = (buffer_p + 1) & 0x3FF;
-			buffer_len--;
+			printf("CRC24Q failed: %X\n", crc24q(mes_length + 3));
+			freeBytes(1);
 			return -1;
 		}
 		uint8_t message_sub_num = extract_u8(0, 36, 4);
@@ -73,7 +72,7 @@ int parsePacket()
 				mes_hdr.pri_GNSS = extract_u8(0, 81, 2);
 				printf("PVT: %d %d %d %d %d %d\n", mes_hdr.version, mes_hdr.multi_mes, mes_hdr.nsats_used, mes_hdr.nsats_seen, mes_hdr.nsats_tracked, mes_hdr.pri_GNSS);
 				uint16_t block_p = 13;
-				while (block_p < 13 + mes_hdr.length)
+				while (block_p < 13 + mes_length)
 				{
 					uint8_t block_len = extract_u8(block_p, 0, 8);
 					uint8_t block_ID = extract_u8(block_p, 8, 4);
@@ -170,14 +169,11 @@ int parsePacket()
 				break;
 			}
 		}
-		buffer_p += mes_hdr.length + 6;
-		buffer_p &= 0x3FF;
-		buffer_len -= mes_hdr.length + 6;
+		freeBytes(mes_length + 6); //free header + message + crc24q
 	}
 	else
 	{
-		buffer_p = (buffer_p + 1) & 0x3FF;
-		buffer_len--;
+		freeBytes(1);
 	}
 	return 0;
 }

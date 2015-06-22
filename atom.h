@@ -10,7 +10,6 @@ extern void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, i
 
 struct pvt_header
 {
-	uint16_t length;
 	uint8_t version;
 	uint8_t multi_mes;
 	uint8_t nsats_used;

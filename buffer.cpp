@@ -183,3 +183,14 @@ inline void addByte(uint8_t data)
 	buffer[(buffer_p + buffer_len) & 0x3FF] = data;
 	buffer_len = (buffer_len + 1) & 0x3FF;
 }
+
+inline void freeBytes(uint16_t count)
+{
+	buffer_p = (buffer_p + count) & 0x3FF;
+	buffer_len = (buffer_len - count) & 0x3FF;
+}
+
+inline uint16_t getBufLen()
+{
+	return buffer_len;
+}
