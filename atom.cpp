@@ -198,28 +198,27 @@ inline void read()
 	addByte(ch);
 }
 
-//TODO: rewrite as fixed point?
 void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t* h)
 {
-	double he;
-	double r_e = 6378137;          // WGS - 84 data
-	double r_p = 6356752;
-	double e = 0.08181979099211;
+	double he = 0.0;
+	const double r_e2 = 6378137.0 * 6378137.0;          // WGS - 84 data
+	const double r_p2 = 6356752.0 * 6356752.0;
+	const double e2 = 0.08181979099211 * 0.08181979099211;
 	double l = atan2(y, x);
-	double eps = 1;
-	double tol = 1e-8; //1e-7?
+	double eps = 1.0;
+	const double tol = 1.0e-8; //1.0e-7?
 	double p = sqrt(x * x + y * y);
-	double mu = atan(z / (p * (1 - e * e)));
+	double mu = atan(z / (p * (1.0 - e2)));
 
 	//TODO: replace with more efficient method
 	while (eps > tol)
 	{
 		double sinmu = sin(mu);
 		double cosmu = cos(mu);
-		double N = r_e * r_e / sqrt(r_e * r_e * cosmu * cosmu + r_p * r_p * sinmu * sinmu);
+		double N = r_e2 / sqrt(r_e2 * cosmu * cosmu + r_p2 * sinmu * sinmu);
 		he = p / cosmu - N;
 		double mu0 = mu;
-		mu = atan(z / (p * (1 - e * e * N / (N + he))));
+		mu = atan(z / (p * (1.0 - e2 * N / (N + he))));
 		eps = abs(mu - mu0);
 	}
 
