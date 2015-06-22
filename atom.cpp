@@ -53,9 +53,9 @@ int parsePacket()
 		mes_hdr.crc24 <<= 8;
 		mes_hdr.crc24 += getByte(mes_hdr.length + 5);
 		//printf("CRC = %X\n", mes_hdr.crc24);
-		if (mes_hdr.crc24 != crc24q(0, 0, mes_hdr.length + 3))
+		if (mes_hdr.crc24 != crc24q(mes_hdr.length + 3))
 		{
-			printf("CRC24Q failed: %X\n", crc24q(0, 0, mes_hdr.length + 3));
+			printf("CRC24Q failed: %X\n", crc24q(mes_hdr.length + 3));
 			buffer_p = (buffer_p + 1) & 0x3FF;
 			buffer_len--;
 			return -1;
