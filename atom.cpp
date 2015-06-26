@@ -146,7 +146,7 @@ int parsePacket()
 							vel_data.vel_smoothing_int = extract_u8(block_p, 88, 4);
 							vel_data.vel_frame = extract_u8(block_p, 92, 1);
 							float vn, ve, vd;
-							ecef2ned(coo_data.x / 10000.0f, coo_data.y / 10000.0f, coo_data.z / 10000.0f, vel_data.v1 / 10000.0f, vel_data.v2 / 10000.0f, vel_data.v2 / 10000.0f, &vn, &ve, &vd);
+							ecef2ned(vel_data.v1, vel_data.v2, vel_data.v2, coo_data.x, coo_data.y, coo_data.z, &vn, &ve, &vd);
 							printf("VEL: %d %d %d %d %lf %lf %lf\n", vel_data.v1, vel_data.v2, vel_data.v3, vel_data.vel_frame, vn, ve, vd);
 							break;
 						}
@@ -230,18 +230,24 @@ void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t*
 	return;
 }
 
-void ecef2ned(float ref_x, float ref_y, float ref_z, float v_x, float v_y, float v_z, float* v_n, float* v_e, float* v_d)
+void ecef2ned(int32_t v_x, int32_t v_y, int32_t v_z, int64_t ref_x, int64_t ref_y, int64_t ref_z, float* v_n, float* v_e, float* v_d)
 {
+	//int32_t for ref?
+	float ref_xf = ref_x / 10000.0f;
+	float ref_yf = ref_y / 10000.0f;
+	float ref_zf = ref_z / 10000.0f;
+	float xyz[3] = { v_x / 10000.0f, v_y / 10000.0f, v_z / 10000.0f };
+	float ned[3] = { 0.0f, 0.0f, 0.0f };
 
 	float hyp_az, hyp_el;
 	float sin_el, cos_el, sin_az, cos_az;
 
-	hyp_az = sqrt(ref_x * ref_x + ref_y * ref_y);
-	hyp_el = sqrt(hyp_az*hyp_az + ref_z * ref_z);
-	sin_el = ref_z / hyp_el;
+	hyp_az = sqrt(ref_xf * ref_xf + ref_yf * ref_yf);
+	hyp_el = sqrt(hyp_az * hyp_az + ref_zf * ref_zf);
+	sin_el = ref_zf / hyp_el;
 	cos_el = hyp_az / hyp_el;
-	sin_az = ref_y / hyp_az;
-	cos_az = ref_x / hyp_az;
+	sin_az = ref_yf / hyp_az;
+	cos_az = ref_xf / hyp_az;
 
 	float M[3][3];
 	M[0][0] = -sin_el * cos_az;
@@ -254,8 +260,6 @@ void ecef2ned(float ref_x, float ref_y, float ref_z, float v_x, float v_y, float
 	M[2][1] = -cos_el * sin_az;
 	M[2][2] = -sin_el;
 
-	float xyz[3] = { v_x, v_y, v_z };
-	float ned[3] = { 0.0f, 0.0f, 0.0f };
 	uint8_t i, j, k;
 	for (i = 0; i < 3; i++)
 	{
