@@ -33,6 +33,8 @@ int main(int argc, char* argv[])
 int parsePacket()
 {
 	struct pvt_header mes_hdr;
+	struct coo_pvt_data coo_data;
+	struct vel_pvt_data vel_data;
 	memset(&mes_hdr, 0, sizeof(mes_hdr));
 	CHECK_DATA(5);
 	while (getByte(0) != 0xD3)
@@ -64,9 +66,10 @@ int parsePacket()
 		{
 			case 3: //PVT
 			{
-				//TODO: do something with COO xyz in VEL block
-				struct coo_pvt_data coo_data;
+				//Make init data invalid
 				coo_data.x = -137438953472;
+				vel_data.v1 = -16777216;
+
 				mes_hdr.version = extract_u8(0, 40, 3);
 				mes_hdr.multi_mes = extract_u8(0, 43, 1);
 				mes_hdr.nsats_used = extract_u8(0, 63, 6);
@@ -136,15 +139,14 @@ int parsePacket()
 								printf("Wrong size of VEL block\n");
 								break;
 							}
-							struct vel_pvt_data vel_data;
 							vel_data.v1 = extract_i32(block_p, 12, 25);
 							vel_data.v2 = extract_i32(block_p, 37, 25);
 							vel_data.v3 = extract_i32(block_p, 62, 25);
 							vel_data.vel_type = extract_u8(block_p, 87, 1);
 							vel_data.vel_smoothing_int = extract_u8(block_p, 88, 4);
 							vel_data.vel_frame = extract_u8(block_p, 92, 1);
-							double vn, ve, vd;
-							ecef2ned((double)coo_data.x / 10000.0, (double)coo_data.y / 10000.0, (double)coo_data.z / 10000.0, (double)vel_data.v1 / 10000.0, (double)vel_data.v2 / 10000.0, (double)vel_data.v2 / 10000.0, &vn, &ve, &vd);
+							float vn, ve, vd;
+							ecef2ned(coo_data.x / 10000.0f, coo_data.y / 10000.0f, coo_data.z / 10000.0f, vel_data.v1 / 10000.0f, vel_data.v2 / 10000.0f, vel_data.v2 / 10000.0f, &vn, &ve, &vd);
 							printf("VEL: %d %d %d %d %lf %lf %lf\n", vel_data.v1, vel_data.v2, vel_data.v3, vel_data.vel_frame, vn, ve, vd);
 							break;
 						}
@@ -228,14 +230,12 @@ void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t*
 	return;
 }
 
-//use floats??
-void ecef2ned(double ref_x, double ref_y, double ref_z, double v_x, double v_y, double v_z, double* v_n, double* v_e, double* v_d)
+void ecef2ned(float ref_x, float ref_y, float ref_z, float v_x, float v_y, float v_z, float* v_n, float* v_e, float* v_d)
 {
 
-	double hyp_az, hyp_el;
-	double sin_el, cos_el, sin_az, cos_az;
+	float hyp_az, hyp_el;
+	float sin_el, cos_el, sin_az, cos_az;
 
-	/* Convert reference point to spherical earth centered coordinates. */
 	hyp_az = sqrt(ref_x * ref_x + ref_y * ref_y);
 	hyp_el = sqrt(hyp_az*hyp_az + ref_z * ref_z);
 	sin_el = ref_z / hyp_el;
@@ -243,7 +243,7 @@ void ecef2ned(double ref_x, double ref_y, double ref_z, double v_x, double v_y, 
 	sin_az = ref_y / hyp_az;
 	cos_az = ref_x / hyp_az;
 
-	double M[3][3];
+	float M[3][3];
 	M[0][0] = -sin_el * cos_az;
 	M[0][1] = -sin_el * sin_az;
 	M[0][2] = cos_el;
@@ -254,8 +254,8 @@ void ecef2ned(double ref_x, double ref_y, double ref_z, double v_x, double v_y, 
 	M[2][1] = -cos_el * sin_az;
 	M[2][2] = -sin_el;
 
-	double xyz[3] = { v_x, v_y, v_z };
-	double ned[3] = { 0, 0, 0 };
+	float xyz[3] = { v_x, v_y, v_z };
+	float ned[3] = { 0.0f, 0.0f, 0.0f };
 	uint8_t i, j, k;
 	for (i = 0; i < 3; i++)
 	{
