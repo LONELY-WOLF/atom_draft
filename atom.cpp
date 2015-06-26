@@ -64,6 +64,9 @@ int parsePacket()
 		{
 			case 3: //PVT
 			{
+				//TODO: do something with COO xyz in VEL block
+				struct coo_pvt_data coo_data;
+				coo_data.x = -137438953472;
 				mes_hdr.version = extract_u8(0, 40, 3);
 				mes_hdr.multi_mes = extract_u8(0, 43, 1);
 				mes_hdr.nsats_used = extract_u8(0, 63, 6);
@@ -86,7 +89,6 @@ int parsePacket()
 								printf("Wrong size of COO block\n");
 								break;
 							}
-							struct coo_pvt_data coo_data;
 							coo_data.pos_type = extract_u8(block_p, 12, 4);
 							coo_data.GNSS_usage = extract_u8(block_p, 16, 8);
 							coo_data.pos_mode = extract_u8(block_p, 24, 3);
@@ -141,7 +143,9 @@ int parsePacket()
 							vel_data.vel_type = extract_u8(block_p, 87, 1);
 							vel_data.vel_smoothing_int = extract_u8(block_p, 88, 4);
 							vel_data.vel_frame = extract_u8(block_p, 92, 1);
-							printf("VEL: %d %d %d %d\n", vel_data.v1, vel_data.v2, vel_data.v3, vel_data.vel_frame);
+							double vn, ve, vd;
+							ecef2ned((double)coo_data.x / 10000.0, (double)coo_data.y / 10000.0, (double)coo_data.z / 10000.0, (double)vel_data.v1 / 10000.0, (double)vel_data.v2 / 10000.0, (double)vel_data.v2 / 10000.0, &vn, &ve, &vd);
+							printf("VEL: %d %d %d %d %lf %lf %lf\n", vel_data.v1, vel_data.v2, vel_data.v3, vel_data.vel_frame, vn, ve, vd);
 							break;
 						}
 						case 14:
@@ -221,5 +225,51 @@ void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t*
 	*lat = (int32_t)(mu * (180.0 / 3.141592653) * 10000000.0);
 	*lon = (int32_t)(l * (180.0 / 3.141592653) * 10000000.0);
 	*h = (int32_t)(he * 1000.0);
+	return;
+}
+
+//use floats??
+void ecef2ned(double ref_x, double ref_y, double ref_z, double v_x, double v_y, double v_z, double* v_n, double* v_e, double* v_d)
+{
+
+	double hyp_az, hyp_el;
+	double sin_el, cos_el, sin_az, cos_az;
+
+	/* Convert reference point to spherical earth centered coordinates. */
+	hyp_az = sqrt(ref_x * ref_x + ref_y * ref_y);
+	hyp_el = sqrt(hyp_az*hyp_az + ref_z * ref_z);
+	sin_el = ref_z / hyp_el;
+	cos_el = hyp_az / hyp_el;
+	sin_az = ref_y / hyp_az;
+	cos_az = ref_x / hyp_az;
+
+	double M[3][3];
+	M[0][0] = -sin_el * cos_az;
+	M[0][1] = -sin_el * sin_az;
+	M[0][2] = cos_el;
+	M[1][0] = -sin_az;
+	M[1][1] = cos_az;
+	M[1][2] = 0.0;
+	M[2][0] = -cos_el * cos_az;
+	M[2][1] = -cos_el * sin_az;
+	M[2][2] = -sin_el;
+
+	double xyz[3] = { v_x, v_y, v_z };
+	double ned[3] = { 0, 0, 0 };
+	uint8_t i, j, k;
+	for (i = 0; i < 3; i++)
+	{
+		for (j = 0; j < 1; j++) {
+			ned[1 * i + j] = 0;
+			for (k = 0; k < 3; k++)
+			{
+				ned[1 * i + j] += M[i][k] * xyz[1 * k + j];
+			}
+		}
+	}
+
+	*v_n = ned[0];
+	*v_e = ned[1];
+	*v_d = ned[2];
 	return;
 }

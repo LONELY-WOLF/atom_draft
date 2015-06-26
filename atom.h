@@ -7,6 +7,7 @@
 extern void read();
 extern int parsePacket();
 extern void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t* h);
+void ecef2ned(double ref_x, double ref_y, double ref_z, double v_x, double v_y, double v_z, double* v_n, double* v_e, double* v_d);
 
 struct pvt_header
 {
