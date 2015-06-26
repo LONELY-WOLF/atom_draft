@@ -111,7 +111,7 @@ int parsePacket()
 							{
 								printf("COO: invalid\n");
 							}
-							ecef2llh((double)coo_data.x / 10000.0, (double)coo_data.y / 10000.0, (double)coo_data.z / 10000.0, &lat, &lon, &h);
+							ecef2llh(coo_data.x / 10000.0, coo_data.y / 10000.0, coo_data.z / 10000.0, &lat, &lon, &h);
 							printf("COO: %d %d %d %d\n", coo_data.pos_type, lat, lon, h);
 							break;
 						}
