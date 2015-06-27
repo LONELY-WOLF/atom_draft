@@ -139,6 +139,105 @@ int parsePacket()
 							vel_data.vel_frame = extract_u8(block_p, 92, 1);
 							break;
 						}
+						case 4:
+						{
+							//CLK - clock
+							if (block_len != 10)
+							{
+								printf("Wrong size of CLK block\n");
+								break;
+							}
+							printf("CLK block\n");
+							break;
+						}
+						case 5:
+						{
+							//LCY - latency
+							if (block_len != 3)
+							{
+								printf("Wrong size of LCY block\n");
+								break;
+							}
+							printf("LCY block\n");
+							break;
+						}
+						case 6:
+						{
+							//HPR - attitude
+							if (block_len != 11)
+							{
+								printf("Wrong size of HPR block\n");
+								break;
+							}
+							printf("HPR block\n");
+							break;
+						}
+						case 7:
+						{
+							//BLN - baseline
+							if (block_len != 16)
+							{
+								printf("Wrong size of BLN block\n");
+								break;
+							}
+							printf("BLN block\n");
+							break;
+						}
+						case 8:
+						{
+							//MIS - miscellaneous
+							if (block_len != 23)
+							{
+								printf("Wrong size of MIS block\n");
+								break;
+							}
+							printf("MIS block\n");
+							break;
+						}
+						case 9:
+						{
+							//ROT - extended attitude parameters
+							if (block_len != 13)
+							{
+								printf("Wrong size of ROT block\n");
+								break;
+							}
+							printf("ROT block\n");
+							break;
+						}
+						case 10:
+						{
+							//BSD - extended baseline parameters
+							if (block_len != 19)
+							{
+								printf("Wrong size of BSD block\n");
+								break;
+							}
+							printf("BSD block\n");
+							break;
+						}
+						case 11:
+						{	
+							//ARR - arrow (vectors of platforms)
+							if (block_len != 17)
+							{
+								printf("Wrong size of ARR block\n");
+								break;
+							}
+							printf("ARR block\n");
+							break;
+						}
+						case 12:
+						{
+							//ASD - extended arrow parameters
+							if (block_len != 19)
+							{
+								printf("Wrong size of ASD block\n");
+								break;
+							}
+							printf("ASD block\n");
+							break;
+						}
 						case 14:
 						{
 							//SVS - Satellite Information
