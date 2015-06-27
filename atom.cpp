@@ -105,14 +105,6 @@ int parsePacket()
 							coo_data.base_id = extract_u16(block_p, 178, 12);
 							coo_data.pos_type_clarifier = extract_u8(block_p, 190, 4);
 							coo_data.diff_link_age = extract_u16(block_p, 194, 10);
-
-							int32_t lat, lon, h;
-							if ((coo_data.x == -137438953472) || (coo_data.y == -137438953472) || (coo_data.z == -137438953472))
-							{
-								printf("COO: invalid\n");
-							}
-							ecef2llh(coo_data.x / 10000.0, coo_data.y / 10000.0, coo_data.z / 10000.0, &lat, &lon, &h);
-							printf("COO: %d %d %d %d\n", coo_data.pos_type, lat, lon, h);
 							break;
 						}
 						case 2:
@@ -145,9 +137,6 @@ int parsePacket()
 							vel_data.vel_type = extract_u8(block_p, 87, 1);
 							vel_data.vel_smoothing_int = extract_u8(block_p, 88, 4);
 							vel_data.vel_frame = extract_u8(block_p, 92, 1);
-							float vn, ve, vd;
-							ecef2ned(vel_data.v1, vel_data.v2, vel_data.v2, coo_data.x, coo_data.y, coo_data.z, &vn, &ve, &vd);
-							printf("VEL: %d %d %d %d %lf %lf %lf\n", vel_data.v1, vel_data.v2, vel_data.v3, vel_data.vel_frame, vn, ve, vd);
 							break;
 						}
 						case 14:
@@ -170,6 +159,29 @@ int parsePacket()
 					else
 					{
 						block_p++; //In case of garbage
+					}
+				}
+				//Convert data
+				if ((coo_data.x == -137438953472) || (coo_data.y == -137438953472) || (coo_data.z == -137438953472))
+				{
+					printf("COO: invalid\n");
+				}
+				else
+				{
+					int32_t lat, lon, h;
+					ecef2llh(coo_data.x / 10000.0, coo_data.y / 10000.0, coo_data.z / 10000.0, &lat, &lon, &h);
+					printf("COO: %d %d %d %d\n", coo_data.pos_type, lat, lon, h);
+
+					//Velocity
+					if ((vel_data.v1 == -16777216) || (vel_data.v2 == -16777216) || (vel_data.v3 == -16777216))
+					{
+						printf("VEL: invalid\n");
+					}
+					else
+					{
+						float vn, ve, vd;
+						ecef2ned(vel_data.v1, vel_data.v2, vel_data.v2, coo_data.x, coo_data.y, coo_data.z, &vn, &ve, &vd);
+						printf("VEL: %d %lf %lf %lf\n", vel_data.vel_frame, vn, ve, vd);
 					}
 				}
 				break;
