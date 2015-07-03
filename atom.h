@@ -4,7 +4,8 @@
 #include <stdint.h>
 
 //Prototypes
-extern void read();
+extern int read(uint16_t count);
+extern int check_data(uint16_t size);
 extern int parsePacket();
 extern void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t* h);
 void ecef2ned(int32_t v_x, int32_t v_y, int32_t v_z, int64_t ref_x, int64_t ref_y, int64_t ref_z, float* v_n, float* v_e, float* v_d);
@@ -44,4 +45,10 @@ struct vel_pvt_data
 	uint8_t vel_frame;
 };
 
+struct err_pvt_data
+{
+	uint32_t sigma;
+	uint8_t k1, k2, k3;
+	int8_t r12, r13, r23;
+};
 #endif /* ATOM_H_ */

@@ -35,20 +35,31 @@ int parsePacket()
 	struct pvt_header mes_hdr;
 	struct coo_pvt_data coo_data;
 	struct vel_pvt_data vel_data;
+	struct err_pvt_data err_data;
 	memset(&mes_hdr, 0, sizeof(mes_hdr));
-	CHECK_DATA(5);
+
+	if (check_data(5) != 0)
+	{
+		return -1;
+	}
 	while (getByte(0) != 0xD3)
 	{
-		read();
+		if (read(1) != 0)
+		{
+			return -1;
+		}
 		freeBytes(1);
 	}
 	uint16_t id = extract_u16(0, 24, 12);
-	//printf("ID = %d\n", extract_u16(&buffer[buffer_p], 24, 12));
+	//printf("ID = %d", id);
 	if (id == 4095) //Ashtech message
 	{
 		uint16_t mes_length = extract_u16(0, 14, 10);
 		printf("length: %d\n", mes_length);
-		CHECK_DATA(mes_length + 6);
+		if (check_data(mes_length + 6) != 0)
+		{
+			return -1;
+		}
 		mes_hdr.crc24 = getByte(mes_length + 3);
 		mes_hdr.crc24 <<= 8;
 		mes_hdr.crc24 += getByte(mes_length + 4);
@@ -69,6 +80,7 @@ int parsePacket()
 				//Make init data invalid
 				coo_data.x = -137438953472;
 				vel_data.v1 = -16777216;
+				err_data.sigma = 1048575;
 
 				mes_hdr.version = extract_u8(0, 40, 3);
 				mes_hdr.multi_mes = extract_u8(0, 43, 1);
@@ -86,7 +98,7 @@ int parsePacket()
 					{
 						case 1:
 						{
-							//COO - Position
+							//COO - position
 							if (block_len != 26)
 							{
 								printf("Wrong size of COO block\n");
@@ -109,23 +121,28 @@ int parsePacket()
 						}
 						case 2:
 						{
-							//ERR - Accuracy
+							//ERR - accuracy
 							if (block_len != 10)
 							{
 								printf("Wrong size of ERR block\n");
 								break;
 							}
-							uint32_t sigma = extract_u32(block_p, 12, 20);
-							if (sigma == 1048575)
+							err_data.sigma = extract_u32(block_p, 12, 20);
+							err_data.k1 = extract_u8(block_p, 32, 7);
+							err_data.k2 = extract_u8(block_p, 39, 7);
+							err_data.k3 = extract_u8(block_p, 46, 7);
+							err_data.r12 = extract_i8(block_p, 53, 8);
+							err_data.r13 = extract_i8(block_p, 61, 8);
+							err_data.r23 = extract_i8(block_p, 69, 8);
+							if (err_data.sigma == 1048575)
 							{
 								printf("ERR: invalid\n");
 							}
-							printf("ERR: %d\n", sigma);
 							break;
 						}
 						case 3:
 						{
-							//VEL - velosity
+							//VEL - velocity
 							if (block_len != 12)
 							{
 								printf("Wrong size of VEL block\n");
@@ -217,7 +234,7 @@ int parsePacket()
 							break;
 						}
 						case 11:
-						{	
+						{
 							//ARR - arrow (vectors of platforms)
 							if (block_len != 17)
 							{
@@ -264,12 +281,26 @@ int parsePacket()
 				if ((coo_data.x == -137438953472) || (coo_data.y == -137438953472) || (coo_data.z == -137438953472))
 				{
 					printf("COO: invalid\n");
+					freeBytes(mes_length + 6); //free header + message + crc24q
+					return 1;
 				}
 				else
 				{
-					int32_t lat, lon, h;
-					ecef2llh(coo_data.x / 10000.0, coo_data.y / 10000.0, coo_data.z / 10000.0, &lat, &lon, &h);
-					printf("COO: %d %d %d %d\n", coo_data.pos_type, lat, lon, h);
+					int32_t lat, lon, alt;
+					ecef2llh(coo_data.x / 10000.0, coo_data.y / 10000.0, coo_data.z / 10000.0, &lat, &lon, &alt);
+					printf("COO: %d %d %d %d\n", coo_data.pos_type ? coo_data.pos_type + 2 : 0, lat, lon, alt);
+
+					//Accuracy
+					if (err_data.sigma == 1048575)
+					{
+						printf("ERR: invalid\n");
+					}
+					else
+					{
+						float eph = sqrtf((float)err_data.k1 * err_data.k1 + err_data.k2 * err_data.k2) * err_data.sigma / (1000.0f * 128.0f);
+						float epv = err_data.k3 * err_data.sigma / (1000.0f * 128.0f);
+						printf("ERR: %f %f\n", eph, epv);
+					}
 
 					//Velocity
 					if ((vel_data.v1 == -16777216) || (vel_data.v2 == -16777216) || (vel_data.v3 == -16777216))
@@ -280,7 +311,7 @@ int parsePacket()
 					{
 						float vn, ve, vd;
 						ecef2ned(vel_data.v1, vel_data.v2, vel_data.v2, coo_data.x, coo_data.y, coo_data.z, &vn, &ve, &vd);
-						printf("VEL: %d %lf %lf %lf\n", vel_data.vel_frame, vn, ve, vd);
+						printf("VEL: %d %f %f %f %f\n", vel_data.vel_frame, vn, ve, vd, atan2(vn, ve) * 180.0f / 3.141592f);
 					}
 				}
 				break;
@@ -292,23 +323,48 @@ int parsePacket()
 	{
 		freeBytes(1);
 	}
+	return 1;
+}
+
+int check_data(uint16_t size)
+{
+	while (size > getBufLen())
+	{
+		read(size - getBufLen());
+	}
 	return 0;
 }
 
-inline void read()
+int read(uint16_t count)
 {
-	int ch = 0;
-	do
+	uint8_t buf[32];
+	uint16_t left = count;
+	while (left > 0)
 	{
-		ch = fgetc(input);
-	} while (errno != 0);
-	if (ch == EOF)
-	{
-		printf("EOF!\n");
-		getchar();
-		exit(0);
+		int bytes_read = fread(buf, 1, (left > 32) ? 32 : left, input);
+		if (bytes_read < 0)
+		{
+			return bytes_read;
+		}
+		else
+		{
+			if (bytes_read)
+			{
+				left -= bytes_read;
+				for (int i = 0; i < bytes_read; i++)
+				{
+					addByte(buf[i]); //make addBytes() function
+				}
+			}
+			else
+			{
+				printf("EOF\n");
+				//getchar();
+				exit(0);
+			}
+		}
 	}
-	addByte(ch);
+	return 0;
 }
 
 void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t* h)
