@@ -175,19 +175,39 @@ int64_t extract_i56(uint16_t buf_off, uint32_t bit_off, uint8_t bit_len)
 
 inline uint8_t getByte(uint16_t pos)
 {
-	return buffer[(buffer_p + pos) & 0x3FF];
+	if (pos <= buffer_len)
+	{
+		return buffer[(buffer_p + pos) & 0x3FF];
+	}
+	else
+	{
+		printf("Out of bounds!\n");
+		return 0;
+	}
 }
 
 inline void addByte(uint8_t data)
 {
-	buffer[(buffer_p + buffer_len) & 0x3FF] = data;
-	buffer_len = (buffer_len + 1) & 0x3FF;
+	if (buffer_len < 2048)
+	{
+		buffer[(buffer_p + buffer_len) & 0x3FF] = data;
+		buffer_len = (buffer_len + 1) & 0x3FF;
+	}
+	else
+	{
+		printf("Buffer overflow!\n");
+	}
 }
 
 inline void freeBytes(uint16_t count)
 {
 	buffer_p = (buffer_p + count) & 0x3FF;
 	buffer_len = (buffer_len - count) & 0x3FF;
+	if (buffer_len < 0)
+	{
+		printf("Freeing more bytes then buffer has!\n");
+		buffer_len = 0;
+	}
 }
 
 inline uint16_t getBufLen()
