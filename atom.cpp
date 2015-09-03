@@ -90,8 +90,9 @@ int parsePacket()
 				mes_hdr.pri_GNSS = extract_u8(0, 81, 2);
 				printf("PVT: %d %d %d %d %d %d\n", mes_hdr.version, mes_hdr.multi_mes, mes_hdr.nsats_used, mes_hdr.nsats_seen, mes_hdr.nsats_tracked, mes_hdr.pri_GNSS);
 				uint16_t block_p = 13;
-				while (block_p < 13 + mes_length)
+				while (block_p < 3 + mes_length - 2)
 				{
+					//printf("at %d:\n", block_p);
 					uint8_t block_len = extract_u8(block_p, 0, 8);
 					uint8_t block_ID = extract_u8(block_p, 8, 4);
 					switch (block_ID)
