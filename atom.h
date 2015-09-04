@@ -12,14 +12,15 @@ void ecef2ned(int32_t v_x, int32_t v_y, int32_t v_z, int64_t ref_x, int64_t ref_
 
 struct pvt_header
 {
-	uint8_t version;
 	uint8_t multi_mes;
+	uint8_t antennaID;
+	uint8_t engineID;
+	uint8_t responseID;
 	uint8_t nsats_used;
 	uint8_t nsats_seen;
 	uint8_t nsats_tracked;
 	uint8_t pri_GNSS;
 	uint32_t time_tag;
-	uint32_t crc24;
 };
 
 struct coo_pvt_data
