@@ -59,7 +59,8 @@ int parsePacket()
 	}
 	uint16_t id = extract_u16(0, 24, 12);
 	//printf("ID = %d", id);
-	if (id == 4095) //Ashtech message
+	//Ashtech message
+	if (id == 4095)
 	{
 		uint16_t mes_length = extract_u16(0, 14, 10);
 		printf("length: %d\n", mes_length);
@@ -83,7 +84,8 @@ int parsePacket()
 		version = extract_u8(0, 40, 3);
 		switch (subid)
 		{
-			case 3: //PVT
+			//PVT
+			case 3:
 			{
 				//Make init data invalid
 				coo_data.x = -137438953472;
@@ -106,9 +108,9 @@ int parsePacket()
 						uint8_t block_ID = extract_u8(block_p, 8, 4);
 						switch (block_ID)
 						{
+							//COO - position
 							case 1:
 							{
-								//COO - position
 								if (block_len != 26)
 								{
 									printf("Wrong size of COO block\n");
@@ -129,9 +131,9 @@ int parsePacket()
 								coo_data.diff_link_age = extract_u16(block_p, 194, 10);
 								break;
 							}
+							//ERR - accuracy
 							case 2:
 							{
-								//ERR - accuracy
 								if (block_len != 10)
 								{
 									printf("Wrong size of ERR block\n");
@@ -150,9 +152,9 @@ int parsePacket()
 								}
 								break;
 							}
+							//VEL - velocity
 							case 3:
 							{
-								//VEL - velocity
 								if (block_len != 12)
 								{
 									printf("Wrong size of VEL block\n");
@@ -166,9 +168,9 @@ int parsePacket()
 								vel_data.vel_frame = extract_u8(block_p, 92, 1);
 								break;
 							}
+							//CLK - clock
 							case 4:
 							{
-								//CLK - clock
 								if (block_len != 10)
 								{
 									printf("Wrong size of CLK block\n");
@@ -177,9 +179,9 @@ int parsePacket()
 								printf("CLK block\n");
 								break;
 							}
+							//LCY - latency
 							case 5:
 							{
-								//LCY - latency
 								if (block_len != 3)
 								{
 									printf("Wrong size of LCY block\n");
@@ -188,9 +190,9 @@ int parsePacket()
 								printf("LCY block\n");
 								break;
 							}
+							//HPR - attitude
 							case 6:
 							{
-								//HPR - attitude
 								if (block_len != 11)
 								{
 									printf("Wrong size of HPR block\n");
@@ -199,9 +201,9 @@ int parsePacket()
 								printf("HPR block\n");
 								break;
 							}
+							//BLN - baseline
 							case 7:
 							{
-								//BLN - baseline
 								if (block_len != 16)
 								{
 									printf("Wrong size of BLN block\n");
@@ -210,9 +212,9 @@ int parsePacket()
 								printf("BLN block\n");
 								break;
 							}
+							//MIS - miscellaneous
 							case 8:
 							{
-								//MIS - miscellaneous
 								if (block_len != 23)
 								{
 									printf("Wrong size of MIS block\n");
@@ -221,9 +223,9 @@ int parsePacket()
 								printf("MIS block\n");
 								break;
 							}
+							//ROT - extended attitude parameters
 							case 9:
 							{
-								//ROT - extended attitude parameters
 								if (block_len != 13)
 								{
 									printf("Wrong size of ROT block\n");
@@ -232,9 +234,9 @@ int parsePacket()
 								printf("ROT block\n");
 								break;
 							}
+							//BSD - extended baseline parameters
 							case 10:
 							{
-								//BSD - extended baseline parameters
 								if (block_len != 19)
 								{
 									printf("Wrong size of BSD block\n");
@@ -243,9 +245,9 @@ int parsePacket()
 								printf("BSD block\n");
 								break;
 							}
+							//ARR - arrow (vectors of platforms)
 							case 11:
 							{
-								//ARR - arrow (vectors of platforms)
 								if (block_len != 17)
 								{
 									printf("Wrong size of ARR block\n");
@@ -254,9 +256,9 @@ int parsePacket()
 								printf("ARR block\n");
 								break;
 							}
+							//ASD - extended arrow parameters
 							case 12:
 							{
-								//ASD - extended arrow parameters
 								if (block_len != 19)
 								{
 									printf("Wrong size of ASD block\n");
@@ -265,9 +267,9 @@ int parsePacket()
 								printf("ASD block\n");
 								break;
 							}
+							//SVS - Satellite Information
 							case 14:
 							{
-								//SVS - Satellite Information
 								uint8_t gnss_id = extract_u8(block_p, 12, 3);
 								printf("SVS: size = %d, GNSS ID = %d\n", block_len, gnss_id);
 								break;
