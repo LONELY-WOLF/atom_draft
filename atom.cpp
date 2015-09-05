@@ -8,6 +8,8 @@
 #include "buffer.h"
 
 #define CHECK_DATA(X) while(getBufLen() < X) read();
+#define PX4_ARRAY2D(_array, _ncols, _x, _y) (_array[_x * _ncols + _y])
+#define PX4_R(_array, _x, _y) PX4_ARRAY2D(_array, 3, _x, _y)
 
 FILE* input;
 
@@ -321,9 +323,10 @@ int parsePacket()
 						}
 						else
 						{
-							float vn, ve, vd;
-							ecef2ned(vel_data.v1, vel_data.v2, vel_data.v2, coo_data.x, coo_data.y, coo_data.z, &vn, &ve, &vd);
-							printf("VEL: %d %f %f %f %f\n", vel_data.vel_frame, vn, ve, vd, atan2(vn, ve) * 180.0f / 3.141592f);
+							float v[3];
+							xyz2ned(&vel_data, lat, lon, v);
+							//ecef2ned(vel_data.v1, vel_data.v2, vel_data.v2, coo_data.x, coo_data.y, coo_data.z, &vn, &ve, &vd);
+							printf("VEL: %d %f %f %f %f\n", vel_data.vel_frame, v[0], v[1], v[2], atan2(v[0], v[1]) * 180.0f / 3.141592f);
 						}
 					}
 				}
@@ -417,50 +420,81 @@ void ecef2llh(struct coo_pvt_data* coo, int32_t* lat, int32_t* lon, int32_t* h)
 	return;
 }
 
-void ecef2ned(int32_t v_x, int32_t v_y, int32_t v_z, int64_t ref_x, int64_t ref_y, int64_t ref_z, float* v_n, float* v_e, float* v_d)
+void xyz2ned(struct vel_pvt_data* vel, int32_t lat, int32_t lon, float v[3])
 {
-	//int32_t for ref?
-	float ref_xf = ref_x / 10000.0f;
-	float ref_yf = ref_y / 10000.0f;
-	float ref_zf = ref_z / 10000.0f;
-	float xyz[3] = { v_x / 10000.0f, v_y / 10000.0f, v_z / 10000.0f };
-	float ned[3] = { 0.0f, 0.0f, 0.0f };
+	float v_in[3] = { vel->v1, vel->v2, vel->v3 };
+	float R[9];
+	float lat_f = lat / 10000000.0f;
+	float lon_f = lon / 10000000.0f;
+	float sin_lat = sin(lat_f);
+	float cos_lat = cos(lat_f);
+	float sin_lon = sin(lon_f);
+	float cos_lon = cos(lon_f);
+	PX4_R(R, 0, 0) = -sin_lon;
+	PX4_R(R, 0, 1) = cos_lon;
+	PX4_R(R, 0, 2) = 0.0f;
+	PX4_R(R, 1, 0) = -sin_lat * cos_lon;
+	PX4_R(R, 1, 1) = -sin_lat * sin_lon;
+	PX4_R(R, 1, 2) = cos_lat;
+	PX4_R(R, 2, 0) = cos_lat * cos_lon;
+	PX4_R(R, 2, 1) = cos_lat * sin_lon;
+	PX4_R(R, 2, 2) = sin_lat;
 
-	float hyp_az, hyp_el;
-	float sin_el, cos_el, sin_az, cos_az;
-
-	hyp_az = sqrt(ref_xf * ref_xf + ref_yf * ref_yf);
-	hyp_el = sqrt(hyp_az * hyp_az + ref_zf * ref_zf);
-	sin_el = ref_zf / hyp_el;
-	cos_el = hyp_az / hyp_el;
-	sin_az = ref_yf / hyp_az;
-	cos_az = ref_xf / hyp_az;
-
-	float M[3][3];
-	M[0][0] = -sin_el * cos_az;
-	M[0][1] = -sin_el * sin_az;
-	M[0][2] = cos_el;
-	M[1][0] = -sin_az;
-	M[1][1] = cos_az;
-	M[1][2] = 0.0;
-	M[2][0] = -cos_el * cos_az;
-	M[2][1] = -cos_el * sin_az;
-	M[2][2] = -sin_el;
-
-	uint8_t i, j, k;
-	for (i = 0; i < 3; i++)
+	for (int i = 0; i < 3; i++)
 	{
-		for (j = 0; j < 1; j++) {
-			ned[1 * i + j] = 0;
-			for (k = 0; k < 3; k++)
-			{
-				ned[1 * i + j] += M[i][k] * xyz[1 * k + j];
-			}
+		v[i] = 0.0f;
+
+		for (int j = 0; j < 3; j++)
+		{
+			v[i] += PX4_R(R, i, j) * v_in[j];
 		}
 	}
-
-	*v_n = ned[0];
-	*v_e = ned[1];
-	*v_d = ned[2];
-	return;
 }
+
+//void ecef2ned(int32_t v_x, int32_t v_y, int32_t v_z, int64_t ref_x, int64_t ref_y, int64_t ref_z, float* v_n, float* v_e, float* v_d)
+//{
+//	//int32_t for ref?
+//	float ref_xf = ref_x / 10000.0f;
+//	float ref_yf = ref_y / 10000.0f;
+//	float ref_zf = ref_z / 10000.0f;
+//	float xyz[3] = { v_x / 10000.0f, v_y / 10000.0f, v_z / 10000.0f };
+//	float ned[3] = { 0.0f, 0.0f, 0.0f };
+//
+//	float hyp_az, hyp_el;
+//	float sin_el, cos_el, sin_az, cos_az;
+//
+//	hyp_az = sqrt(ref_xf * ref_xf + ref_yf * ref_yf);
+//	hyp_el = sqrt(hyp_az * hyp_az + ref_zf * ref_zf);
+//	sin_el = ref_zf / hyp_el;
+//	cos_el = hyp_az / hyp_el;
+//	sin_az = ref_yf / hyp_az;
+//	cos_az = ref_xf / hyp_az;
+//
+//	float M[3][3];
+//	M[0][0] = -sin_el * cos_az;
+//	M[0][1] = -sin_el * sin_az;
+//	M[0][2] = cos_el;
+//	M[1][0] = -sin_az;
+//	M[1][1] = cos_az;
+//	M[1][2] = 0.0;
+//	M[2][0] = -cos_el * cos_az;
+//	M[2][1] = -cos_el * sin_az;
+//	M[2][2] = -sin_el;
+//
+//	uint8_t i, j, k;
+//	for (i = 0; i < 3; i++)
+//	{
+//		for (j = 0; j < 1; j++) {
+//			ned[1 * i + j] = 0;
+//			for (k = 0; k < 3; k++)
+//			{
+//				ned[1 * i + j] += M[i][k] * xyz[1 * k + j];
+//			}
+//		}
+//	}
+//
+//	*v_n = ned[0];
+//	*v_e = ned[1];
+//	*v_d = ned[2];
+//	return;
+//}
