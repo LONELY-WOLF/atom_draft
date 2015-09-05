@@ -40,7 +40,7 @@ int parsePacket()
 	memset(&vel_data, 0, sizeof(vel_data));
 	struct err_pvt_data err_data;
 	memset(&err_data, 0, sizeof(err_data));
-	uint8_t id;
+	uint16_t id;
 	uint8_t subid;
 	uint8_t version;
 	uint32_t crc24;
@@ -57,7 +57,7 @@ int parsePacket()
 		}
 		freeBytes(1);
 	}
-	uint16_t id = extract_u16(0, 24, 12);
+	id = extract_u16(0, 24, 12);
 	//printf("ID = %d", id);
 	//Ashtech message
 	if (id == 4095)
