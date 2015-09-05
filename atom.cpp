@@ -299,7 +299,7 @@ int parsePacket()
 					else
 					{
 						int32_t lat, lon, alt;
-						ecef2llh(coo_data.x / 10000.0, coo_data.y / 10000.0, coo_data.z / 10000.0, &lat, &lon, &alt);
+						ecef2llh(&coo_data, &lat, &lon, &alt);
 						printf("COO: %d %d %d %d\n", coo_data.pos_type ? coo_data.pos_type + 2 : 0, lat, lon, alt);
 
 						//Accuracy
@@ -384,17 +384,20 @@ int read(uint16_t count)
 	return 0;
 }
 
-void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t* h)
+void ecef2llh(struct coo_pvt_data* coo, int32_t* lat, int32_t* lon, int32_t* h)
 {
+	double x_d = coo->x / 10000.0;
+	double y_d = coo->y / 10000.0;
+	double z_d = coo->z / 10000.0;
 	double he = 0.0;
 	const double r_e2 = 6378137.0 * 6378137.0;          // WGS - 84 data
 	const double r_p2 = 6356752.0 * 6356752.0;
 	const double e2 = 0.08181979099211 * 0.08181979099211;
-	double l = atan2(y, x);
+	double l = atan2(y_d, x_d);
 	double eps = 1.0;
 	const double tol = 1.0e-8; //1.0e-7?
-	double p = sqrt(x * x + y * y);
-	double mu = atan(z / (p * (1.0 - e2)));
+	double p = sqrt(x_d * x_d + y_d * y_d);
+	double mu = atan(z_d / (p * (1.0 - e2)));
 
 	//TODO: replace with more efficient method
 	while (eps > tol)
@@ -404,7 +407,7 @@ void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t*
 		double N = r_e2 / sqrt(r_e2 * cosmu * cosmu + r_p2 * sinmu * sinmu);
 		he = p / cosmu - N;
 		double mu0 = mu;
-		mu = atan(z / (p * (1.0 - e2 * N / (N + he))));
+		mu = atan(z_d / (p * (1.0 - e2 * N / (N + he))));
 		eps = abs(mu - mu0);
 	}
 

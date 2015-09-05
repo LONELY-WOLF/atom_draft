@@ -7,7 +7,7 @@
 extern int read(uint16_t count);
 extern int check_data(uint16_t size);
 extern int parsePacket();
-extern void ecef2llh(double x, double y, double z, int32_t* lat, int32_t* lon, int32_t* h);
+extern void ecef2llh(struct coo_pvt_data* coo, int32_t* lat, int32_t* lon, int32_t* h);
 void ecef2ned(int32_t v_x, int32_t v_y, int32_t v_z, int64_t ref_x, int64_t ref_y, int64_t ref_z, float* v_n, float* v_e, float* v_d);
 
 struct pvt_header
