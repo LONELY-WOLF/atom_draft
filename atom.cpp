@@ -325,7 +325,7 @@ int parsePacket()
 						{
 							float v[3];
 							xyz2ned(&vel_data, lat, lon, v);
-							//ecef2ned(vel_data.v1, vel_data.v2, vel_data.v2, coo_data.x, coo_data.y, coo_data.z, &vn, &ve, &vd);
+							//ecef2ned(&vel_data, &coo_data, v);
 							printf("VEL: %d %f %f %f %f\n", vel_data.vel_frame, v[0], v[1], v[2], atan2(v[0], v[1]) * 180.0f / 3.141592f);
 						}
 					}
@@ -456,50 +456,49 @@ void xyz2ned(struct vel_pvt_data* vel, int32_t lat, int32_t lon, float v[3])
 	v[2] = -enu[2]; //D
 }
 
-//void ecef2ned(int32_t v_x, int32_t v_y, int32_t v_z, int64_t ref_x, int64_t ref_y, int64_t ref_z, float* v_n, float* v_e, float* v_d)
-//{
-//	//int32_t for ref?
-//	float ref_xf = ref_x / 10000.0f;
-//	float ref_yf = ref_y / 10000.0f;
-//	float ref_zf = ref_z / 10000.0f;
-//	float xyz[3] = { v_x / 10000.0f, v_y / 10000.0f, v_z / 10000.0f };
-//	float ned[3] = { 0.0f, 0.0f, 0.0f };
-//
-//	float hyp_az, hyp_el;
-//	float sin_el, cos_el, sin_az, cos_az;
-//
-//	hyp_az = sqrt(ref_xf * ref_xf + ref_yf * ref_yf);
-//	hyp_el = sqrt(hyp_az * hyp_az + ref_zf * ref_zf);
-//	sin_el = ref_zf / hyp_el;
-//	cos_el = hyp_az / hyp_el;
-//	sin_az = ref_yf / hyp_az;
-//	cos_az = ref_xf / hyp_az;
-//
-//	float M[3][3];
-//	M[0][0] = -sin_el * cos_az;
-//	M[0][1] = -sin_el * sin_az;
-//	M[0][2] = cos_el;
-//	M[1][0] = -sin_az;
-//	M[1][1] = cos_az;
-//	M[1][2] = 0.0;
-//	M[2][0] = -cos_el * cos_az;
-//	M[2][1] = -cos_el * sin_az;
-//	M[2][2] = -sin_el;
-//
-//	uint8_t i, j, k;
-//	for (i = 0; i < 3; i++)
-//	{
-//		for (j = 0; j < 1; j++) {
-//			ned[1 * i + j] = 0;
-//			for (k = 0; k < 3; k++)
-//			{
-//				ned[1 * i + j] += M[i][k] * xyz[1 * k + j];
-//			}
-//		}
-//	}
-//
-//	*v_n = ned[0];
-//	*v_e = ned[1];
-//	*v_d = ned[2];
-//	return;
-//}
+void ecef2ned(struct vel_pvt_data* vel, struct coo_pvt_data* coo, float v[3])
+{
+	float ref_xf = coo->x / 10000.0f;
+	float ref_yf = coo->y / 10000.0f;
+	float ref_zf = coo->z / 10000.0f;
+	float xyz[3] = { vel->v1 / 10000.0f, vel->v2 / 10000.0f, vel->v1 / 10000.0f };
+	float ned[3] = { 0.0f, 0.0f, 0.0f };
+
+	float hyp_az, hyp_el;
+	float sin_el, cos_el, sin_az, cos_az;
+
+	hyp_az = sqrtf(ref_xf * ref_xf + ref_yf * ref_yf);
+	hyp_el = sqrtf(hyp_az * hyp_az + ref_zf * ref_zf);
+	sin_el = ref_zf / hyp_el;
+	cos_el = hyp_az / hyp_el;
+	sin_az = ref_yf / hyp_az;
+	cos_az = ref_xf / hyp_az;
+
+	float M[3][3];
+	M[0][0] = -sin_el * cos_az;
+	M[0][1] = -sin_el * sin_az;
+	M[0][2] = cos_el;
+	M[1][0] = -sin_az;
+	M[1][1] = cos_az;
+	M[1][2] = 0.0;
+	M[2][0] = -cos_el * cos_az;
+	M[2][1] = -cos_el * sin_az;
+	M[2][2] = -sin_el;
+
+	uint8_t i, j, k;
+	for (i = 0; i < 3; i++)
+	{
+		for (j = 0; j < 1; j++) {
+			ned[1 * i + j] = 0;
+			for (k = 0; k < 3; k++)
+			{
+				ned[1 * i + j] += M[i][k] * xyz[1 * k + j];
+			}
+		}
+	}
+
+	v[0] = ned[0];
+	v[1] = ned[1];
+	v[2] = ned[2];
+	return;
+}
