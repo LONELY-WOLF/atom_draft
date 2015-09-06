@@ -15,7 +15,7 @@ FILE* input;
 
 int main(int argc, char* argv[])
 {
-	input = fopen("input.bin", "rb");
+	fopen_s(&input, "input.bin", "rb");
 	if (input > 0)
 	{
 		printf("file opened\n");
@@ -411,7 +411,7 @@ void ecef2llh(struct coo_pvt_data* coo, int32_t* lat, int32_t* lon, int32_t* h)
 		he = p / cosmu - N;
 		double mu0 = mu;
 		mu = atan(z_d / (p * (1.0 - e2 * N / (N + he))));
-		eps = abs(mu - mu0);
+		eps = fabs(mu - mu0);
 	}
 
 	*lat = (int32_t)(mu * (180.0 / 3.141592653) * 10000000.0);
@@ -422,14 +422,14 @@ void ecef2llh(struct coo_pvt_data* coo, int32_t* lat, int32_t* lon, int32_t* h)
 
 void xyz2ned(struct vel_pvt_data* vel, int32_t lat, int32_t lon, float v[3])
 {
-	float v_in[3] = { vel->v1, vel->v2, vel->v3 };
+	float v_in[3] = { (float)vel->v1, (float)vel->v2, (float)vel->v3 };
 	float R[9];
 	float lat_f = lat / 10000000.0f;
 	float lon_f = lon / 10000000.0f;
-	float sin_lat = sin(lat_f);
-	float cos_lat = cos(lat_f);
-	float sin_lon = sin(lon_f);
-	float cos_lon = cos(lon_f);
+	float sin_lat = sinf(lat_f);
+	float cos_lat = cosf(lat_f);
+	float sin_lon = sinf(lon_f);
+	float cos_lon = cosf(lon_f);
 	PX4_R(R, 0, 0) = -sin_lon;
 	PX4_R(R, 0, 1) = cos_lon;
 	PX4_R(R, 0, 2) = 0.0f;
