@@ -403,7 +403,7 @@ void ecef2llh(struct coo_pvt_data* coo, int32_t* lat, int32_t* lon, int32_t* h)
 	double mu = atan(z_d / (p * (1.0 - e2)));
 
 	//TODO: replace with more efficient method
-	while (eps > tol)
+	while (eps > tol) // 1 time for 1.0e-7, 2 times for 1.0e-8
 	{
 		double sinmu = sin(mu);
 		double cosmu = cos(mu);
@@ -422,7 +422,7 @@ void ecef2llh(struct coo_pvt_data* coo, int32_t* lat, int32_t* lon, int32_t* h)
 
 void xyz2ned(struct vel_pvt_data* vel, int32_t lat, int32_t lon, float v[3])
 {
-	float v_in[3] = { (float)vel->v1, (float)vel->v2, (float)vel->v3 };
+	float v_in[3] = { vel->v2 / 10000.0f, vel->v1 / 10000.0f, -vel->v3 / 10000.0f };
 	float R[9];
 	float lat_f = lat / 10000000.0f;
 	float lon_f = lon / 10000000.0f;
