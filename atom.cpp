@@ -422,7 +422,8 @@ void ecef2llh(struct coo_pvt_data* coo, int32_t* lat, int32_t* lon, int32_t* h)
 
 void xyz2ned(struct vel_pvt_data* vel, int32_t lat, int32_t lon, float v[3])
 {
-	float v_in[3] = { vel->v2 / 10000.0f, vel->v1 / 10000.0f, -vel->v3 / 10000.0f };
+	float v_in[3] = { vel->v1 / 10000.0f, vel->v2 / 10000.0f, vel->v3 / 10000.0f };
+	float enu[3];
 	float R[9];
 	float lat_f = lat / 10000000.0f;
 	float lon_f = lon / 10000000.0f;
@@ -442,13 +443,17 @@ void xyz2ned(struct vel_pvt_data* vel, int32_t lat, int32_t lon, float v[3])
 
 	for (int i = 0; i < 3; i++)
 	{
-		v[i] = 0.0f;
+		enu[i] = 0.0f;
 
 		for (int j = 0; j < 3; j++)
 		{
-			v[i] += PX4_R(R, i, j) * v_in[j];
+			enu[i] += PX4_R(R, j, i) * v_in[j];
 		}
 	}
+
+	v[0] = enu[1]; //N
+	v[1] = enu[0]; //E
+	v[2] = -enu[2]; //D
 }
 
 //void ecef2ned(int32_t v_x, int32_t v_y, int32_t v_z, int64_t ref_x, int64_t ref_y, int64_t ref_z, float* v_n, float* v_e, float* v_d)
