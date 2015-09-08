@@ -425,8 +425,8 @@ void xyz2ned(struct vel_pvt_data* vel, int32_t lat, int32_t lon, float v[3])
 	float v_in[3] = { vel->v1 / 10000.0f, vel->v2 / 10000.0f, vel->v3 / 10000.0f };
 	float enu[3];
 	float R[9];
-	float lat_f = lat / 10000000.0f;
-	float lon_f = lon / 10000000.0f;
+	float lat_f = lat / 10000000.0f * (3.141592653f / 180.0f);
+	float lon_f = lon / 10000000.0f * (3.141592653f / 180.0f);
 	float sin_lat = sinf(lat_f);
 	float cos_lat = cosf(lat_f);
 	float sin_lon = sinf(lon_f);
