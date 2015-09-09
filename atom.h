@@ -53,4 +53,15 @@ struct err_pvt_data
 	uint8_t k1, k2, k3;
 	int8_t r12, r13, r23;
 };
+
+struct hpr_pvt_data
+{
+	uint16_t heading;
+	int16_t pitch, roll;
+	uint8_t calib_mode;
+	uint8_t ambiguity;
+	uint8_t antenna_setup;
+	uint16_t MRMS, BRMS;
+	uint8_t platform_subID;
+};
 #endif /* ATOM_H_ */

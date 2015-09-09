@@ -42,6 +42,8 @@ int parsePacket()
 	memset(&vel_data, 0, sizeof(vel_data));
 	struct err_pvt_data err_data;
 	memset(&err_data, 0, sizeof(err_data));
+	struct hpr_pvt_data hpr_data;
+	memset(&hpr_data, 0, sizeof(hpr_pvt_data));
 	uint16_t id;
 	uint8_t subid;
 	uint8_t version;
@@ -99,240 +101,425 @@ int parsePacket()
 				mes_hdr.nsats_seen = extract_u8(0, 69, 6);
 				mes_hdr.nsats_tracked = extract_u8(0, 75, 6);
 				mes_hdr.pri_GNSS = extract_u8(0, 81, 2);
-				printf("PVT: %d %d %d %d %d %d\n", version, mes_hdr.multi_mes, mes_hdr.nsats_used, mes_hdr.nsats_seen, mes_hdr.nsats_tracked, mes_hdr.pri_GNSS);
+				printf("PVT: %d %d %d %d %d %d %d\n", version, mes_hdr.multi_mes, mes_hdr.nsats_used, mes_hdr.nsats_seen, mes_hdr.nsats_tracked, mes_hdr.pri_GNSS, mes_hdr.responseID);
 				uint16_t block_p = 13;
-				if (mes_hdr.responseID == 0)
+				switch (mes_hdr.responseID)
 				{
-					while (block_p < 3 + mes_length - 2)
+					//PVT
+					case 0:
 					{
-						//printf("at %d:\n", block_p);
-						uint8_t block_len = extract_u8(block_p, 0, 8);
-						uint8_t block_ID = extract_u8(block_p, 8, 4);
-						switch (block_ID)
+						while (block_p < 3 + mes_length - 2)
 						{
-							//COO - position
-							case 1:
+							//printf("at %d:\n", block_p);
+							uint8_t block_len = extract_u8(block_p, 0, 8);
+							uint8_t block_ID = extract_u8(block_p, 8, 4);
+							switch (block_ID)
 							{
-								if (block_len != 26)
+								//COO - position
+								case 1:
 								{
-									printf("Wrong size of COO block\n");
+									if (block_len != 26)
+									{
+										printf("Wrong size of COO block\n");
+										break;
+									}
+									coo_data.pos_type = extract_u8(block_p, 12, 4);
+									coo_data.GNSS_usage = extract_u8(block_p, 16, 8);
+									coo_data.pos_mode = extract_u8(block_p, 24, 3);
+									coo_data.pos_smoothing = extract_u8(block_p, 27, 3);
+									coo_data.PDOP = extract_u16(block_p, 34, 10);
+									coo_data.HDOP = extract_u16(block_p, 44, 10);
+									coo_data.x = extract_i56(block_p, 54, 38);
+									coo_data.y = extract_i56(block_p, 92, 38);
+									coo_data.z = extract_i56(block_p, 130, 38);
+									coo_data.diff_pos_age = extract_u16(block_p, 168, 10);
+									coo_data.base_id = extract_u16(block_p, 178, 12);
+									coo_data.pos_type_clarifier = extract_u8(block_p, 190, 4);
+									coo_data.diff_link_age = extract_u16(block_p, 194, 10);
 									break;
 								}
-								coo_data.pos_type = extract_u8(block_p, 12, 4);
-								coo_data.GNSS_usage = extract_u8(block_p, 16, 8);
-								coo_data.pos_mode = extract_u8(block_p, 24, 3);
-								coo_data.pos_smoothing = extract_u8(block_p, 27, 3);
-								coo_data.PDOP = extract_u16(block_p, 34, 10);
-								coo_data.HDOP = extract_u16(block_p, 44, 10);
-								coo_data.x = extract_i56(block_p, 54, 38);
-								coo_data.y = extract_i56(block_p, 92, 38);
-								coo_data.z = extract_i56(block_p, 130, 38);
-								coo_data.diff_pos_age = extract_u16(block_p, 168, 10);
-								coo_data.base_id = extract_u16(block_p, 178, 12);
-								coo_data.pos_type_clarifier = extract_u8(block_p, 190, 4);
-								coo_data.diff_link_age = extract_u16(block_p, 194, 10);
-								break;
-							}
-							//ERR - accuracy
-							case 2:
-							{
-								if (block_len != 10)
+								//ERR - accuracy
+								case 2:
 								{
-									printf("Wrong size of ERR block\n");
+									if (block_len != 10)
+									{
+										printf("Wrong size of ERR block\n");
+										break;
+									}
+									err_data.sigma = extract_u32(block_p, 12, 20);
+									err_data.k1 = extract_u8(block_p, 32, 7);
+									err_data.k2 = extract_u8(block_p, 39, 7);
+									err_data.k3 = extract_u8(block_p, 46, 7);
+									err_data.r12 = extract_i8(block_p, 53, 8);
+									err_data.r13 = extract_i8(block_p, 61, 8);
+									err_data.r23 = extract_i8(block_p, 69, 8);
+									if (err_data.sigma == 1048575)
+									{
+										printf("ERR: invalid\n");
+									}
 									break;
 								}
-								err_data.sigma = extract_u32(block_p, 12, 20);
-								err_data.k1 = extract_u8(block_p, 32, 7);
-								err_data.k2 = extract_u8(block_p, 39, 7);
-								err_data.k3 = extract_u8(block_p, 46, 7);
-								err_data.r12 = extract_i8(block_p, 53, 8);
-								err_data.r13 = extract_i8(block_p, 61, 8);
-								err_data.r23 = extract_i8(block_p, 69, 8);
-								if (err_data.sigma == 1048575)
+								//VEL - velocity
+								case 3:
 								{
-									printf("ERR: invalid\n");
-								}
-								break;
-							}
-							//VEL - velocity
-							case 3:
-							{
-								if (block_len != 12)
-								{
-									printf("Wrong size of VEL block\n");
+									if (block_len != 12)
+									{
+										printf("Wrong size of VEL block\n");
+										break;
+									}
+									vel_data.v1 = extract_i32(block_p, 12, 25);
+									vel_data.v2 = extract_i32(block_p, 37, 25);
+									vel_data.v3 = extract_i32(block_p, 62, 25);
+									vel_data.vel_type = extract_u8(block_p, 87, 1);
+									vel_data.vel_smoothing_int = extract_u8(block_p, 88, 4);
+									vel_data.vel_frame = extract_u8(block_p, 92, 1);
 									break;
 								}
-								vel_data.v1 = extract_i32(block_p, 12, 25);
-								vel_data.v2 = extract_i32(block_p, 37, 25);
-								vel_data.v3 = extract_i32(block_p, 62, 25);
-								vel_data.vel_type = extract_u8(block_p, 87, 1);
-								vel_data.vel_smoothing_int = extract_u8(block_p, 88, 4);
-								vel_data.vel_frame = extract_u8(block_p, 92, 1);
-								break;
-							}
-							//CLK - clock
-							case 4:
-							{
-								if (block_len != 10)
+								//CLK - clock
+								case 4:
 								{
-									printf("Wrong size of CLK block\n");
+									if (block_len != 10)
+									{
+										printf("Wrong size of CLK block\n");
+										break;
+									}
+									printf("CLK block\n");
 									break;
 								}
-								printf("CLK block\n");
-								break;
-							}
-							//LCY - latency
-							case 5:
-							{
-								if (block_len != 3)
+								//LCY - latency
+								case 5:
 								{
-									printf("Wrong size of LCY block\n");
+									if (block_len != 3)
+									{
+										printf("Wrong size of LCY block\n");
+										break;
+									}
+									printf("LCY block\n");
 									break;
 								}
-								printf("LCY block\n");
-								break;
-							}
-							//HPR - attitude
-							case 6:
-							{
-								if (block_len != 11)
+								//HPR - attitude
+								case 6:
 								{
-									printf("Wrong size of HPR block\n");
+									if (block_len != 11)
+									{
+										printf("Wrong size of HPR block\n");
+										break;
+									}
+									printf("HPR block\n");
 									break;
 								}
-								printf("HPR block\n");
-								break;
-							}
-							//BLN - baseline
-							case 7:
-							{
-								if (block_len != 16)
+								//BLN - baseline
+								case 7:
 								{
-									printf("Wrong size of BLN block\n");
+									if (block_len != 16)
+									{
+										printf("Wrong size of BLN block\n");
+										break;
+									}
+									printf("BLN block\n");
 									break;
 								}
-								printf("BLN block\n");
-								break;
-							}
-							//MIS - miscellaneous
-							case 8:
-							{
-								if (block_len != 23)
+								//MIS - miscellaneous
+								case 8:
 								{
-									printf("Wrong size of MIS block\n");
+									if (block_len != 23)
+									{
+										printf("Wrong size of MIS block\n");
+										break;
+									}
+									printf("MIS block\n");
 									break;
 								}
-								printf("MIS block\n");
-								break;
-							}
-							//ROT - extended attitude parameters
-							case 9:
-							{
-								if (block_len != 13)
+								//ROT - extended attitude parameters
+								case 9:
 								{
-									printf("Wrong size of ROT block\n");
+									if (block_len != 13)
+									{
+										printf("Wrong size of ROT block\n");
+										break;
+									}
+									printf("ROT block\n");
 									break;
 								}
-								printf("ROT block\n");
-								break;
-							}
-							//BSD - extended baseline parameters
-							case 10:
-							{
-								if (block_len != 19)
+								//BSD - extended baseline parameters
+								case 10:
 								{
-									printf("Wrong size of BSD block\n");
+									if (block_len != 19)
+									{
+										printf("Wrong size of BSD block\n");
+										break;
+									}
+									printf("BSD block\n");
 									break;
 								}
-								printf("BSD block\n");
-								break;
-							}
-							//ARR - arrow (vectors of platforms)
-							case 11:
-							{
-								if (block_len != 17)
+								//ARR - arrow (vectors of platforms)
+								case 11:
 								{
-									printf("Wrong size of ARR block\n");
+									if (block_len != 17)
+									{
+										printf("Wrong size of ARR block\n");
+										break;
+									}
+									printf("ARR block\n");
 									break;
 								}
-								printf("ARR block\n");
-								break;
-							}
-							//ASD - extended arrow parameters
-							case 12:
-							{
-								if (block_len != 19)
+								//ASD - extended arrow parameters
+								case 12:
 								{
-									printf("Wrong size of ASD block\n");
+									if (block_len != 19)
+									{
+										printf("Wrong size of ASD block\n");
+										break;
+									}
+									printf("ASD block\n");
 									break;
 								}
-								printf("ASD block\n");
-								break;
+								//SVS - Satellite Information
+								case 14:
+								{
+									uint8_t gnss_id = extract_u8(block_p, 12, 3);
+									printf("SVS: size = %d, GNSS ID = %d\n", block_len, gnss_id);
+									break;
+								}
+								default:
+								{
+									printf("Unknown PVT block. ID = %d\n", block_ID);
+									break;
+								}
 							}
-							//SVS - Satellite Information
-							case 14:
+							if (block_len > 0)
 							{
-								uint8_t gnss_id = extract_u8(block_p, 12, 3);
-								printf("SVS: size = %d, GNSS ID = %d\n", block_len, gnss_id);
-								break;
+								block_p += block_len;
 							}
-							default:
+							else
 							{
-								printf("Unknown PVT block. ID = %d\n", block_ID);
-								break;
+								block_p++; //In case of garbage
 							}
 						}
-						if (block_len > 0)
+						//Convert data
+						if ((coo_data.x == -137438953472) || (coo_data.y == -137438953472) || (coo_data.z == -137438953472))
 						{
-							block_p += block_len;
+							printf("COO: invalid\n");
+							freeBytes(mes_length + 6); //free header + message + crc24q
+							return 1;
 						}
 						else
 						{
-							block_p++; //In case of garbage
-						}
-					}
-					//Convert data
-					if ((coo_data.x == -137438953472) || (coo_data.y == -137438953472) || (coo_data.z == -137438953472))
-					{
-						printf("COO: invalid\n");
-						freeBytes(mes_length + 6); //free header + message + crc24q
-						return 1;
-					}
-					else
-					{
-						int32_t lat, lon, alt;
-						ecef2llh(&coo_data, &lat, &lon, &alt);
-						printf("COO: %d %d %d %d\n", coo_data.pos_type ? coo_data.pos_type + 2 : 0, lat, lon, alt);
+							int32_t lat, lon, alt;
+							ecef2llh(&coo_data, &lat, &lon, &alt);
+							printf("COO: %d %d %d %d\n", coo_data.pos_type ? coo_data.pos_type + 2 : 0, lat, lon, alt);
 
-						//Accuracy
-						if (err_data.sigma == 1048575)
-						{
-							printf("ERR: invalid\n");
-						}
-						else
-						{
-							float eph = sqrtf((float)err_data.k1 * err_data.k1 + err_data.k2 * err_data.k2) * err_data.sigma / (1000.0f * 128.0f);
-							float epv = err_data.k3 * err_data.sigma / (1000.0f * 128.0f);
-							printf("ERR: %f %f\n", eph, epv);
-						}
+							//Accuracy
+							if (err_data.sigma == 1048575)
+							{
+								printf("ERR: invalid\n");
+							}
+							else
+							{
+								float eph = sqrtf((float)err_data.k1 * err_data.k1 + err_data.k2 * err_data.k2) * err_data.sigma / (1000.0f * 128.0f);
+								float epv = err_data.k3 * err_data.sigma / (1000.0f * 128.0f);
+								printf("ERR: %f %f\n", eph, epv);
+							}
 
-						//Velocity
-						if ((vel_data.v1 == -16777216) || (vel_data.v2 == -16777216) || (vel_data.v3 == -16777216))
-						{
-							printf("VEL: invalid\n");
+							//Velocity
+							if ((vel_data.v1 == -16777216) || (vel_data.v2 == -16777216) || (vel_data.v3 == -16777216))
+							{
+								printf("VEL: invalid\n");
+							}
+							else
+							{
+								float v[3];
+								xyz2ned(&vel_data, lat, lon, v);
+								//ecef2ned(&vel_data, &coo_data, v);
+								printf("VEL: %d %f %f %f %f\n", vel_data.vel_frame, v[0], v[1], v[2], atan2(v[0], v[1]) * 180.0f / 3.141592f);
+							}
 						}
-						else
-						{
-							float v[3];
-							xyz2ned(&vel_data, lat, lon, v);
-							//ecef2ned(&vel_data, &coo_data, v);
-							printf("VEL: %d %f %f %f %f\n", vel_data.vel_frame, v[0], v[1], v[2], atan2(v[0], v[1]) * 180.0f / 3.141592f);
-						}
+						break;
 					}
-				}
-				else
-				{
-					printf("Not supported response ID\n");
+					//ANG
+					case 1:
+					{
+						while (block_p < 3 + mes_length - 2)
+						{
+							//printf("at %d:\n", block_p);
+							uint8_t block_len = extract_u8(block_p, 0, 8);
+							uint8_t block_ID = extract_u8(block_p, 8, 4);
+							switch (block_ID)
+							{
+								//COO - position
+								case 1:
+								{
+									if (block_len != 26)
+									{
+										printf("Wrong size of COO block\n");
+										break;
+									}
+									printf("COO block\n");
+									break;
+								}
+								//ERR - accuracy
+								case 2:
+								{
+									if (block_len != 10)
+									{
+										printf("Wrong size of ERR block\n");
+										break;
+									}
+									printf("ERR block\n");
+									break;
+								}
+								//VEL - velocity
+								case 3:
+								{
+									if (block_len != 12)
+									{
+										printf("Wrong size of VEL block\n");
+										break;
+									}
+									printf("VEL block\n");
+									break;
+								}
+								//CLK - clock
+								case 4:
+								{
+									if (block_len != 10)
+									{
+										printf("Wrong size of CLK block\n");
+										break;
+									}
+									printf("CLK block\n");
+									break;
+								}
+								//LCY - latency
+								case 5:
+								{
+									if (block_len != 3)
+									{
+										printf("Wrong size of LCY block\n");
+										break;
+									}
+									printf("LCY block\n");
+									break;
+								}
+								//HPR - attitude
+								case 6:
+								{
+									if (block_len != 11)
+									{
+										printf("Wrong size of HPR block\n");
+										break;
+									}
+									hpr_data.heading = extract_u16(block_p, 12, 16);
+									hpr_data.pitch = extract_i16(block_p, 28, 16);
+									hpr_data.roll = extract_i16(block_p, 44, 16);
+									hpr_data.calib_mode = extract_u8(block_p, 60, 1);
+									hpr_data.ambiguity = extract_u8(block_p, 61, 1);
+									hpr_data.antenna_setup = extract_u8(block_p, 62, 2);
+									hpr_data.MRMS = extract_u16(block_p, 64, 10);
+									hpr_data.BRMS = extract_u16(block_p, 74, 10);
+									hpr_data.platform_subID = extract_u8(block_p, 84, 4);
+									break;
+								}
+								//BLN - baseline
+								case 7:
+								{
+									if (block_len != 16)
+									{
+										printf("Wrong size of BLN block\n");
+										break;
+									}
+									printf("BLN block\n");
+									break;
+								}
+								//MIS - miscellaneous
+								case 8:
+								{
+									if (block_len != 23)
+									{
+										printf("Wrong size of MIS block\n");
+										break;
+									}
+									printf("MIS block\n");
+									break;
+								}
+								//ROT - extended attitude parameters
+								case 9:
+								{
+									if (block_len != 13)
+									{
+										printf("Wrong size of ROT block\n");
+										break;
+									}
+									printf("ROT block\n");
+									break;
+								}
+								//BSD - extended baseline parameters
+								case 10:
+								{
+									if (block_len != 19)
+									{
+										printf("Wrong size of BSD block\n");
+										break;
+									}
+									printf("BSD block\n");
+									break;
+								}
+								//ARR - arrow (vectors of platforms)
+								case 11:
+								{
+									if (block_len != 17)
+									{
+										printf("Wrong size of ARR block\n");
+										break;
+									}
+									printf("ARR block\n");
+									break;
+								}
+								//ASD - extended arrow parameters
+								case 12:
+								{
+									if (block_len != 19)
+									{
+										printf("Wrong size of ASD block\n");
+										break;
+									}
+									printf("ASD block\n");
+									break;
+								}
+								//SVS - Satellite Information
+								case 14:
+								{
+									uint8_t gnss_id = extract_u8(block_p, 12, 3);
+									printf("SVS: size = %d, GNSS ID = %d\n", block_len, gnss_id);
+									break;
+								}
+								default:
+								{
+									printf("Unknown PVT block. ID = %d\n", block_ID);
+									break;
+								}
+							}
+							if (block_len > 0)
+							{
+								block_p += block_len;
+							}
+							else
+							{
+								block_p++; //In case of garbage
+							}
+						}
+						//Convert data
+						printf("HPR: %d %d %d @ %d %d %d @ %d %d %d",
+							hpr_data.heading, hpr_data.pitch, hpr_data.roll,
+							hpr_data.calib_mode, hpr_data.ambiguity, hpr_data.antenna_setup,
+							hpr_data.MRMS, hpr_data.BRMS, hpr_data.platform_subID);
+						break;
+					}
+					default:
+					{
+						printf("Not supported response ID\n");
+						break;
+					}
 				}
 				break;
 			}
