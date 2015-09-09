@@ -509,8 +509,24 @@ int parsePacket()
 							}
 						}
 						//Convert data
-						printf("HPR: %d %d %d @ %d %d %d @ %d %d %d",
-							hpr_data.heading, hpr_data.pitch, hpr_data.roll,
+						float hpr[3];
+						hpr[0] = hpr_data.heading / 100.0f;
+						hpr[1] = hpr_data.pitch / 100.0f;
+						hpr[2] = hpr_data.roll / 100.0f;
+						if (hpr[0] > 360.0f)
+						{
+							hpr[0] = NAN;
+						}
+						if ((hpr[1] > 90.0f) || (hpr[1] < -90.0f))
+						{
+							hpr[1] = NAN;
+						}
+						if ((hpr[2] > 90.0f) || (hpr[2] < -90.0f))
+						{
+							hpr[2] = NAN;
+						}
+						printf("HPR: %.0f %.0f %.0f @ %d %d %d @ %d %d %d",
+							hpr[0], hpr[1], hpr[2],
 							hpr_data.calib_mode, hpr_data.ambiguity, hpr_data.antenna_setup,
 							hpr_data.MRMS, hpr_data.BRMS, hpr_data.platform_subID);
 						break;
