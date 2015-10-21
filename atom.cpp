@@ -332,7 +332,7 @@ int parsePacket()
 							{
 								float v[3];
 								xyz2ned(&vel_data, lat, lon, v);
-								printf("VEL: %d %f %f %f %f\n", vel_data.vel_frame, v[0], v[1], v[2], atan2(v[0], v[1]) * 180.0f / 3.141592f);
+								printf("VEL: %d %f %f %f %f\n", vel_data.vel_frame, v[0], v[1], v[2], -atan2(-v[1], v[0]) * 180.0f / 3.141592f);
 							}
 						}
 						break;
