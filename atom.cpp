@@ -97,6 +97,7 @@ int parsePacket()
 				err_data.sigma = 1048575;
 
 				mes_hdr.multi_mes = extract_u8(0, 43, 1);
+				mes_hdr.responseID = extract_u8(0, 54, 4);
 				mes_hdr.nsats_used = extract_u8(0, 63, 6);
 				mes_hdr.nsats_seen = extract_u8(0, 69, 6);
 				mes_hdr.nsats_tracked = extract_u8(0, 75, 6);
@@ -108,6 +109,7 @@ int parsePacket()
 					//PVT
 					case 0:
 					{
+						printf("PVT response\n");
 						while (block_p < 3 + mes_length - 2)
 						{
 							//printf("at %d:\n", block_p);
@@ -339,6 +341,7 @@ int parsePacket()
 					//ANG
 					case 1:
 					{
+						printf("ANG response\n");
 						while (block_p < 3 + mes_length - 2)
 						{
 							//printf("at %d:\n", block_p);
@@ -525,7 +528,7 @@ int parsePacket()
 						{
 							hpr[2] = NAN;
 						}
-						printf("HPR: %.0f %.0f %.0f @ %d %d %d @ %d %d %d",
+						printf("HPR: %.0f %.0f %.0f @ %d %d %d @ %d %d %d\n",
 							hpr[0], hpr[1], hpr[2],
 							hpr_data.calib_mode, hpr_data.ambiguity, hpr_data.antenna_setup,
 							hpr_data.MRMS, hpr_data.BRMS, hpr_data.platform_subID);
