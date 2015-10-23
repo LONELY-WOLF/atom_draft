@@ -11,6 +11,12 @@
 #define PX4_ARRAY2D(_array, _ncols, _x, _y) (_array[_x * _ncols + _y])
 #define PX4_R(_array, _x, _y) PX4_ARRAY2D(_array, 3, _x, _y)
 
+uint16_t sunday = 6; // 6 Jan 1980
+uint16_t year_sun = 1980;
+
+uint8_t days28[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+uint8_t days29[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
 FILE* input;
 
 int main(int argc, char* argv[])
@@ -43,7 +49,11 @@ int parsePacket()
 	struct err_pvt_data err_data;
 	memset(&err_data, 0, sizeof(err_data));
 	struct hpr_pvt_data hpr_data;
-	memset(&hpr_data, 0, sizeof(hpr_pvt_data));
+	memset(&hpr_data, 0, sizeof(hpr_data));
+	struct mis_pvt_data mis_data;
+	memset(&mis_data, 0, sizeof(mis_data));
+	struct time_tag_pvt_data time_tag_data;
+	memset(&time_tag_data, 0, sizeof(time_tag_data));
 	uint16_t id;
 	uint8_t subid;
 	uint8_t version;
@@ -102,6 +112,13 @@ int parsePacket()
 				mes_hdr.nsats_seen = extract_u8(0, 69, 6);
 				mes_hdr.nsats_tracked = extract_u8(0, 75, 6);
 				mes_hdr.pri_GNSS = extract_u8(0, 81, 2);
+				time_tag_data.sec = extract_u16(0, 83, 12);
+				time_tag_data.ext = extract_u8(0, 95, 1);
+				if (time_tag_data.ext == 0)
+				{
+					time_tag_data.hour = extract_u8(0, 96, 5);
+					time_tag_data.day = extract_u8(0, 101, 3);
+				}
 				printf("PVT: %d %d %d %d %d %d %d\n", version, mes_hdr.multi_mes, mes_hdr.nsats_used, mes_hdr.nsats_seen, mes_hdr.nsats_tracked, mes_hdr.pri_GNSS, mes_hdr.responseID);
 				uint16_t block_p = 13;
 				switch (mes_hdr.responseID)
@@ -229,7 +246,7 @@ int parsePacket()
 										printf("Wrong size of MIS block\n");
 										break;
 									}
-									printf("MIS block\n");
+									mis_data.GNSS_t_cycles = extract_u16(block_p, 88, 12);
 									break;
 								}
 								//ROT - extended attitude parameters
@@ -335,6 +352,74 @@ int parsePacket()
 								printf("VEL: %d %f %f %f %f\n", vel_data.vel_frame, v[0], v[1], v[2], -atan2(-v[1], v[0]) * 180.0f / 3.141592f);
 							}
 						}
+
+						//Year
+						uint32_t days = (mis_data.GNSS_t_cycles * 7) + 6;
+						for (int i = 0; i < 80; i++)
+						{
+							if ((i & 3) == 0) //i % 4 == 0
+							{
+								if (days > 366)
+								{
+									days -= 366;
+								}
+								else
+								{
+									sunday = days;
+									year_sun = 1980 + i;
+									break;
+								}
+							}
+							else
+							{
+								if (days > 365)
+								{
+									days -= 365;
+								}
+								else
+								{
+									sunday = days;
+									year_sun = 1980 + i;
+									break;
+								}
+							}
+						}
+						//Month and day
+						uint8_t month_sun, day_sun;
+						uint8_t *m_days = ((year_sun & 3) == 0) ? days29 : days28;
+						for (int i = 0; i < 12; i++)
+						{
+							if (days > m_days[i])
+							{
+								days -= m_days[i];
+							}
+							else
+							{
+								month_sun = i + 1;
+								day_sun = days;
+								break;
+							}
+						}
+						if (time_tag_data.ext == 0)
+						{
+							uint16_t year = year_sun;
+							uint8_t month = month_sun;
+							uint8_t day = day_sun + time_tag_data.day;
+							if (day > m_days[month_sun])
+							{
+								day -= m_days[month_sun];
+								month++;
+								if (month > 12)
+								{
+									month -= 12;
+									year++;
+								}
+							}
+							uint8_t minutes = time_tag_data.sec / 60;
+							uint8_t sec = time_tag_data.sec % 60;
+							printf("Time: %02d:%02d:%02d %02d/%02d/%04d\n", time_tag_data.hour, minutes, sec, day, month, year);
+						}
+
 						break;
 					}
 					//ANG

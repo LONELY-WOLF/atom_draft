@@ -64,4 +64,26 @@ struct hpr_pvt_data
 	uint16_t MRMS, BRMS;
 	uint8_t platform_subID;
 };
+
+struct mis_pvt_data
+{
+	uint8_t pos_point;
+	uint16_t antenna_h;
+	uint8_t datum;
+	uint8_t datum_clarification;
+	int16_t geoid_h;
+	uint16_t GNSS_t_cycles;
+	uint8_t GPS_UTC_t_shift;
+	int16_t Mag_var;
+	uint16_t time_zone_offset;
+	uint8_t orbits_type;
+};
+
+struct time_tag_pvt_data
+{
+	uint16_t sec;
+	uint8_t ext;
+	uint8_t hour;
+	uint8_t day;
+};
 #endif /* ATOM_H_ */
