@@ -53,6 +53,7 @@ int parsePacket()
 	uint8_t subid;
 	uint8_t version;
 	uint32_t crc24;
+	uint8_t time_valid = 0;
 
 	if (check_data(5) != 0)
 	{
@@ -100,6 +101,7 @@ int parsePacket()
 				coo_data.x = -137438953472;
 				vel_data.v1 = -16777216;
 				err_data.sigma = 1048575;
+				time_valid = 0;
 
 				mes_hdr.multi_mes = extract_u8(0, 43, 1);
 				mes_hdr.responseID = extract_u8(0, 54, 4);
@@ -242,6 +244,7 @@ int parsePacket()
 										break;
 									}
 									mis_data.GNSS_t_cycles = extract_u16(block_p, 88, 12);
+									time_valid = 1;
 									break;
 								}
 								//ROT - extended attitude parameters
@@ -349,53 +352,53 @@ int parsePacket()
 						}
 
 						//Year
-						uint32_t days = (mis_data.GNSS_t_cycles * 7) + 6; //Days since 1 Jan 1980
-						days -= 11688; //Days since 1 Jan 2012
-						for (int i = 0; i < 80; i++)
+						if ((time_tag_data.ext == 0) && time_valid)
 						{
-							if ((i & 3) == 0) //i % 4 == 0
+							uint32_t days = (mis_data.GNSS_t_cycles * 7) + 6; //Days since 1 Jan 1980
+							days -= 11688; //Days since 1 Jan 2012
+							for (int i = 0; i < 80; i++)
 							{
-								if (days > 366)
+								if ((i & 3) == 0) //i % 4 == 0
 								{
-									days -= 366;
+									if (days > 366)
+									{
+										days -= 366;
+									}
+									else
+									{
+										year_sun = 2012 + i;
+										break;
+									}
 								}
 								else
 								{
-									year_sun = 2012 + i;
-									break;
+									if (days > 365)
+									{
+										days -= 365;
+									}
+									else
+									{
+										year_sun = 2012 + i;
+										break;
+									}
 								}
 							}
-							else
+							//Month and day
+							uint8_t month_sun, day_sun;
+							uint8_t *m_days = ((year_sun & 3) == 0) ? days29 : days28;
+							for (int i = 0; i < 12; i++)
 							{
-								if (days > 365)
+								if (days > m_days[i])
 								{
-									days -= 365;
+									days -= m_days[i];
 								}
 								else
 								{
-									year_sun = 2012 + i;
+									month_sun = i + 1;
+									day_sun = days;
 									break;
 								}
 							}
-						}
-						//Month and day
-						uint8_t month_sun, day_sun;
-						uint8_t *m_days = ((year_sun & 3) == 0) ? days29 : days28;
-						for (int i = 0; i < 12; i++)
-						{
-							if (days > m_days[i])
-							{
-								days -= m_days[i];
-							}
-							else
-							{
-								month_sun = i + 1;
-								day_sun = days;
-								break;
-							}
-						}
-						if (time_tag_data.ext == 0)
-						{
 							uint16_t year = year_sun;
 							uint8_t month = month_sun;
 							uint8_t day = day_sun + time_tag_data.day;
