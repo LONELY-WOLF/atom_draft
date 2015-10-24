@@ -7,7 +7,7 @@
 #include "crc24q.h"
 #include "buffer.h"
 
-uint16_t year_sun = 1980;
+uint16_t year_sun = 2012;
 
 uint8_t days28[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 uint8_t days29[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
@@ -349,7 +349,8 @@ int parsePacket()
 						}
 
 						//Year
-						uint32_t days = (mis_data.GNSS_t_cycles * 7) + 6;
+						uint32_t days = (mis_data.GNSS_t_cycles * 7) + 6; //Days since 1 Jan 1980
+						days -= 11688; //Days since 1 Jan 2012
 						for (int i = 0; i < 80; i++)
 						{
 							if ((i & 3) == 0) //i % 4 == 0
@@ -360,7 +361,7 @@ int parsePacket()
 								}
 								else
 								{
-									year_sun = 1980 + i;
+									year_sun = 2012 + i;
 									break;
 								}
 							}
@@ -372,7 +373,7 @@ int parsePacket()
 								}
 								else
 								{
-									year_sun = 1980 + i;
+									year_sun = 2012 + i;
 									break;
 								}
 							}
