@@ -7,8 +7,6 @@
 #include "crc24q.h"
 #include "buffer.h"
 
-uint16_t year_sun = 2012;
-
 uint8_t days28[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 uint8_t days29[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
@@ -351,10 +349,14 @@ int parsePacket()
 							}
 						}
 
+						//Time
+						uint16_t year;
+						uint8_t month;
+						uint8_t day;
 						//Year
 						if ((time_tag_data.ext == 0) && time_valid)
 						{
-							uint32_t days = (mis_data.GNSS_t_cycles * 7) + 6; //Days since 1 Jan 1980
+							uint32_t days = (mis_data.GNSS_t_cycles * 7) + 6 + time_tag_data.day; //Days since 1 Jan 1980
 							days -= 11688; //Days since 1 Jan 2012
 							for (int i = 0; i < 80; i++)
 							{
@@ -366,7 +368,7 @@ int parsePacket()
 									}
 									else
 									{
-										year_sun = 2012 + i;
+										year = 2012 + i;
 										break;
 									}
 								}
@@ -378,14 +380,13 @@ int parsePacket()
 									}
 									else
 									{
-										year_sun = 2012 + i;
+										year = 2012 + i;
 										break;
 									}
 								}
 							}
 							//Month and day
-							uint8_t month_sun, day_sun;
-							uint8_t *m_days = ((year_sun & 3) == 0) ? days29 : days28;
+							uint8_t *m_days = ((year & 3) == 0) ? days29 : days28;
 							for (int i = 0; i < 12; i++)
 							{
 								if (days > m_days[i])
@@ -394,22 +395,9 @@ int parsePacket()
 								}
 								else
 								{
-									month_sun = i + 1;
-									day_sun = days;
+									month = i + 1;
+									day = days;
 									break;
-								}
-							}
-							uint16_t year = year_sun;
-							uint8_t month = month_sun;
-							uint8_t day = day_sun + time_tag_data.day;
-							if (day > m_days[month_sun])
-							{
-								day -= m_days[month_sun];
-								month++;
-								if (month > 12)
-								{
-									month -= 12;
-									year++;
 								}
 							}
 							uint8_t minutes = time_tag_data.sec / 60;
