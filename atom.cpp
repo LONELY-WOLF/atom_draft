@@ -7,11 +7,6 @@
 #include "crc24q.h"
 #include "buffer.h"
 
-#define CHECK_DATA(X) while(getBufLen() < X) read();
-#define PX4_ARRAY2D(_array, _ncols, _x, _y) (_array[_x * _ncols + _y])
-#define PX4_R(_array, _x, _y) PX4_ARRAY2D(_array, 3, _x, _y)
-
-uint16_t sunday = 6; // 6 Jan 1980
 uint16_t year_sun = 1980;
 
 uint8_t days28[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
@@ -365,7 +360,6 @@ int parsePacket()
 								}
 								else
 								{
-									sunday = days;
 									year_sun = 1980 + i;
 									break;
 								}
@@ -378,7 +372,6 @@ int parsePacket()
 								}
 								else
 								{
-									sunday = days;
 									year_sun = 1980 + i;
 									break;
 								}
@@ -713,8 +706,6 @@ void ecef2llh(struct coo_pvt_data* coo, int32_t* lat, int32_t* lon, int32_t* h)
 void xyz2ned(struct vel_pvt_data* vel, int32_t lat, int32_t lon, float v[3])
 {
 	float v_in[3] = { vel->v1 / 10000.0f, vel->v2 / 10000.0f, vel->v3 / 10000.0f };
-	float enu[3];
-	float R[9];
 	float lat_f = lat / 10000000.0f * (3.141592653f / 180.0f);
 	float lon_f = lon / 10000000.0f * (3.141592653f / 180.0f);
 	float sin_lat = sinf(lat_f);
