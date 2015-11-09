@@ -14,7 +14,14 @@ FILE* input;
 
 int main(int argc, char* argv[])
 {
-	fopen_s(&input, "input.bin", "rb");
+	if (argc > 1)
+	{
+		fopen_s(&input, argv[1], "rb");
+	}
+	else
+	{
+		fopen_s(&input, "input.bin", "rb");
+	}
 	if (input > 0)
 	{
 		printf("file opened\n");
