@@ -248,6 +248,7 @@ int parsePacket()
 										printf("Wrong size of MIS block\n");
 										break;
 									}
+									printf("MIS block\n");
 									mis_data.GNSS_t_cycles = extract_u16(block_p, 88, 12);
 									time_valid = 1;
 									break;
